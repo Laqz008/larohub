@@ -62,6 +62,8 @@ export function MobileBottomNav({ notifications, className }: MobileBottomNavPro
       initial={{ y: 100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.3 }}
+      role="tablist"
+      aria-label="Main navigation"
     >
       <div className="flex items-center justify-around px-2 py-2">
         {navigationItems.map((item, index) => {
@@ -81,11 +83,15 @@ export function MobileBottomNav({ notifications, className }: MobileBottomNavPro
                 href={item.href}
                 className={cn(
                   'flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-200 relative',
-                  'min-w-[60px] min-h-[60px]',
+                  'min-w-[60px] min-h-[60px] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-dark-400',
                   isActive
                     ? 'bg-primary-500/20 text-primary-100'
                     : 'text-primary-300 hover:text-primary-100 hover:bg-primary-400/10'
                 )}
+                aria-label={`Navigate to ${item.name}`}
+                aria-current={isActive ? 'page' : undefined}
+                role="tab"
+                tabIndex={0}
               >
                 {/* Active background glow */}
                 {isActive && (
@@ -104,7 +110,7 @@ export function MobileBottomNav({ notifications, className }: MobileBottomNavPro
                   transition={{ duration: 0.2 }}
                 >
                   <span className="text-lg">{item.emoji}</span>
-                  
+
                   {/* Notification badge */}
                   {notificationCount && notificationCount > 0 && (
                     <motion.span
@@ -156,7 +162,7 @@ export function MobileQuickAction() {
       transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.5 }}
     >
       <motion.button
-        className="w-14 h-14 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white shadow-lg basketball-glow"
+        className="w-14 h-14 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white shadow-lg basketball-glow focus:outline-none focus:ring-2 focus:ring-primary-300 focus:ring-offset-2 focus:ring-offset-dark-900"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         animate={{
@@ -173,6 +179,8 @@ export function MobileQuickAction() {
             ease: "easeInOut"
           }
         }}
+        aria-label="Quick action - Create new game"
+        title="Create new game"
       >
         <span className="text-xl">⚡</span>
       </motion.button>

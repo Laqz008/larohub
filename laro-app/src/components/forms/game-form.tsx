@@ -2,21 +2,25 @@
 
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  Users, 
-  Star, 
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Users,
+  Star,
   Lock,
   Globe,
   Save,
   X,
-  Search
+  Search,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GameButton } from '@/components/ui/game-button';
 import { InteractiveSkillSelector } from '@/components/ui/skill-rating';
+import { LoadingOverlay } from '@/components/ui/loading';
+import { useToastHelpers } from '@/components/ui/toast';
+import { schemas, validateForm } from '@/lib/validation';
 import { GameForm, Court } from '@/types';
 
 interface GameFormProps {
@@ -51,14 +55,16 @@ export function GameCreationForm({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [courtSearch, setCourtSearch] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const toast = useToastHelpers();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
-    
+
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : 
+      [name]: type === 'checkbox' ? checked :
                type === 'number' ? parseInt(value) || 0 : value
     }));
 
@@ -78,55 +84,65 @@ export function GameCreationForm({
     }));
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  const validateFormData = (): boolean => {
+    // Transform form data to match validation schema
+    const validationData = {
+      title: formData.title,
+      description: formData.description,
+      courtId: formData.courtId,
+      date: formData.scheduledAt.split('T')[0],
+      time: formData.scheduledAt.split('T')[1],
+      maxPlayers: formData.maxPlayers,
+      skillLevel: 'intermediate', // Map skill level range to enum
+      gameType: formData.gameType,
+      isPrivate: formData.isPrivate,
+    };
 
-    if (!formData.title.trim()) {
-      newErrors.title = 'Game title is required';
-    } else if (formData.title.length < 3) {
-      newErrors.title = 'Game title must be at least 3 characters';
+    const result = validateForm(schemas.game.create, validationData);
+
+    if (!result.success && result.errors) {
+      setErrors(result.errors);
+
+      // Show toast for validation errors
+      const firstError = Object.values(result.errors)[0];
+      toast.error('Validation Error', firstError);
+
+      return false;
     }
 
-    if (!formData.courtId) {
-      newErrors.courtId = 'Please select a court';
-    }
-
-    if (!formData.scheduledAt) {
-      newErrors.scheduledAt = 'Please select a date and time';
-    } else {
-      const gameDate = new Date(formData.scheduledAt);
-      const now = new Date();
-      if (gameDate <= now) {
-        newErrors.scheduledAt = 'Game must be scheduled for a future date';
-      }
-    }
-
-    if (formData.maxPlayers < 2) {
-      newErrors.maxPlayers = 'Game must have at least 2 players';
-    } else if (formData.maxPlayers > 20) {
-      newErrors.maxPlayers = 'Game cannot have more than 20 players';
-    }
+    // Additional custom validations
+    const customErrors: Record<string, string> = {};
 
     if (formData.skillLevel.min > formData.skillLevel.max) {
-      newErrors.skillLevel = 'Minimum skill level cannot be higher than maximum';
+      customErrors.skillLevel = 'Minimum skill level cannot be higher than maximum';
     }
 
-    if (formData.duration < 30) {
-      newErrors.duration = 'Game duration must be at least 30 minutes';
-    } else if (formData.duration > 480) {
-      newErrors.duration = 'Game duration cannot exceed 8 hours';
+    if (Object.keys(customErrors).length > 0) {
+      setErrors(customErrors);
+      toast.error('Validation Error', Object.values(customErrors)[0]);
+      return false;
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors({});
+    return true;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm()) return;
-    
-    onSubmit(formData);
+
+    if (!validateFormData()) return;
+
+    setIsSubmitting(true);
+
+    try {
+      await onSubmit(formData);
+      toast.gameCreated(formData.title);
+    } catch (error) {
+      console.error('Error creating game:', error);
+      toast.error('Failed to create game', 'Please try again or contact support if the problem persists.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const filteredCourts = courts.filter(court =>
@@ -140,7 +156,7 @@ export function GameCreationForm({
   const getSuggestedTimes = () => {
     const now = new Date();
     const suggestions = [];
-    
+
     // Today evening
     const todayEvening = new Date(now);
     todayEvening.setHours(18, 0, 0, 0);
@@ -171,15 +187,17 @@ export function GameCreationForm({
   };
 
   return (
-    <motion.div
-      className={cn(
-        'bg-gradient-to-br from-dark-300/80 to-dark-400/80 backdrop-blur-sm rounded-xl p-8 border border-primary-400/20',
-        className
-      )}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3 }}
+    <LoadingOverlay
+      isLoading={isSubmitting}
+      text="Creating your game..."
+      className={className}
     >
+      <motion.div
+        className="bg-gradient-to-br from-dark-300/80 to-dark-400/80 backdrop-blur-sm rounded-xl p-8 border border-primary-400/20"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3 }}
+      >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header */}
         <div className="text-center mb-8">
@@ -258,8 +276,8 @@ export function GameCreationForm({
                 />
                 <div className={cn(
                   "flex items-center space-x-3 p-3 rounded-lg border transition-all",
-                  !formData.isPrivate 
-                    ? "border-primary-500 bg-primary-500/10" 
+                  !formData.isPrivate
+                    ? "border-primary-500 bg-primary-500/10"
                     : "border-primary-400/30 bg-dark-200/30 hover:border-primary-400/50"
                 )}>
                   <Globe className="w-5 h-5 text-primary-400" />
@@ -280,8 +298,8 @@ export function GameCreationForm({
                 />
                 <div className={cn(
                   "flex items-center space-x-3 p-3 rounded-lg border transition-all",
-                  formData.isPrivate 
-                    ? "border-primary-500 bg-primary-500/10" 
+                  formData.isPrivate
+                    ? "border-primary-500 bg-primary-500/10"
                     : "border-primary-400/30 bg-dark-200/30 hover:border-primary-400/50"
                 )}>
                   <Lock className="w-5 h-5 text-primary-400" />
@@ -300,7 +318,7 @@ export function GameCreationForm({
           <label className="block text-sm font-medium text-primary-200 mb-2">
             Court Location *
           </label>
-          
+
           {/* Court Search */}
           <div className="relative mb-3">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -344,7 +362,7 @@ export function GameCreationForm({
               </label>
             ))}
           </div>
-          
+
           {errors.courtId && (
             <motion.p
               className="mt-1 text-sm text-red-400"
@@ -521,20 +539,22 @@ export function GameCreationForm({
               Cancel
             </GameButton>
           )}
-          
+
           <GameButton
             type="submit"
             variant="primary"
             size="lg"
-            loading={isLoading}
+            loading={isSubmitting || isLoading}
             glow
             className="sm:flex-1"
             icon={<Save className="w-5 h-5" />}
+            disabled={isSubmitting}
           >
-            {isLoading ? 'Creating Game...' : 'Create Game'}
+            {isSubmitting ? 'Creating Game...' : 'Create Game'}
           </GameButton>
         </div>
       </form>
-    </motion.div>
+      </motion.div>
+    </LoadingOverlay>
   );
 }

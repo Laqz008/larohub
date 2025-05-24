@@ -1,13 +1,16 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, MapPin, Clock, Users, TrendingUp, Calendar } from 'lucide-react';
 import { AuthenticatedHeader } from '@/components/layout/header';
 import { Sidebar, MobileSidebar } from '@/components/layout/sidebar';
 import { MobileBottomNav, MobileQuickAction } from '@/components/layout/mobile-nav';
 import { GameButton, QuickMatchButton, FindCourtsButton, CreateTeamButton, JoinGameButton } from '@/components/ui/game-button';
 import { StatCard, WinRateCard, GamesPlayedCard, RatingCard, StreakCard } from '@/components/ui/stat-card';
+import { DashboardSkeleton, GameCardSkeleton } from '@/components/ui/skeleton';
+import { EmptyGamesList } from '@/components/ui/empty-state';
+import { useToastHelpers } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 
 // Mock data for demonstration
@@ -69,6 +72,41 @@ const mockUpcomingMatches = [
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const toast = useToastHelpers();
+
+  // Simulate loading data
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show loading skeleton while data is loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
+        <div className="flex">
+          <div className="hidden lg:block">
+            <Sidebar
+              isOpen={sidebarOpen}
+              onToggle={() => setSidebarOpen(!sidebarOpen)}
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <AuthenticatedHeader
+              user={mockUser}
+              onMenuToggle={() => setMobileSidebarOpen(true)}
+            />
+            <DashboardSkeleton />
+          </div>
+        </div>
+        <MobileBottomNav />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
