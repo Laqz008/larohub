@@ -3,13 +3,13 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { 
-  Users, 
-  Settings, 
-  UserPlus, 
-  MessageCircle, 
-  Calendar, 
-  Trophy, 
+import {
+  Users,
+  Settings,
+  UserPlus,
+  MessageCircle,
+  Calendar,
+  Trophy,
   Star,
   MapPin,
   Crown,
@@ -50,6 +50,7 @@ const mockTeamMembers = [
       rating: 1950,
       position: 'PG' as Position,
       city: 'Los Angeles',
+      maxDistance: 25,
       isVerified: true,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -71,6 +72,7 @@ const mockTeamMembers = [
       rating: 1820,
       position: 'SG' as Position,
       city: 'Los Angeles',
+      maxDistance: 20,
       isVerified: true,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -92,6 +94,7 @@ const mockTeamMembers = [
       rating: 1750,
       position: 'SF' as Position,
       city: 'Los Angeles',
+      maxDistance: 30,
       isVerified: true,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -113,6 +116,7 @@ const mockTeamMembers = [
       rating: 1800,
       position: 'PF' as Position,
       city: 'Los Angeles',
+      maxDistance: 25,
       isVerified: true,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -134,6 +138,7 @@ const mockTeamMembers = [
       rating: 1880,
       position: 'C' as Position,
       city: 'Los Angeles',
+      maxDistance: 15,
       isVerified: true,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -156,6 +161,7 @@ const mockTeamMembers = [
       rating: 1720,
       position: 'PG' as Position,
       city: 'Los Angeles',
+      maxDistance: 20,
       isVerified: true,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -177,7 +183,7 @@ const mockTeam: TeamWithMembers = {
   gamesPlayed: 45,
   wins: 32,
   createdAt: new Date('2024-01-15'),
-  captain: mockTeamMembers[0].user,
+  captain: mockTeamMembers[0].user!,
   members: mockTeamMembers,
   memberCount: mockTeamMembers.length
 };
@@ -185,11 +191,11 @@ const mockTeam: TeamWithMembers = {
 export default function TeamDetailPage() {
   const params = useParams();
   const teamId = params.id as string;
-  
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'lineup' | 'members' | 'games'>('overview');
-  
+
   // Mock user role - in real app, this would come from auth/API
   const userRole = 'captain'; // 'captain' | 'co_captain' | 'member' | 'none'
 
@@ -204,29 +210,29 @@ export default function TeamDetailPage() {
   };
 
   const winRate = mockTeam.gamesPlayed > 0 ? Math.round((mockTeam.wins / mockTeam.gamesPlayed) * 100) : 0;
-  const avgSkillLevel = mockTeam.members.reduce((sum, member) => sum + member.user.skillLevel, 0) / mockTeam.members.length;
+  const avgSkillLevel = mockTeam.members.reduce((sum, member) => sum + (member.user?.skillLevel || 0), 0) / mockTeam.members.length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
       {/* Mobile Sidebar */}
-      <MobileSidebar 
-        isOpen={mobileSidebarOpen} 
-        onClose={() => setMobileSidebarOpen(false)} 
+      <MobileSidebar
+        isOpen={mobileSidebarOpen}
+        onClose={() => setMobileSidebarOpen(false)}
       />
 
       <div className="flex">
         {/* Desktop Sidebar */}
         <div className="hidden lg:block">
-          <Sidebar 
-            isOpen={sidebarOpen} 
-            onToggle={() => setSidebarOpen(!sidebarOpen)} 
+          <Sidebar
+            isOpen={sidebarOpen}
+            onToggle={() => setSidebarOpen(!sidebarOpen)}
           />
         </div>
 
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <AuthenticatedHeader 
+          <AuthenticatedHeader
             user={mockUser}
             onMenuToggle={() => setMobileSidebarOpen(true)}
           />
@@ -417,10 +423,10 @@ export default function TeamDetailPage() {
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {mockTeam.members.map((member) => (
+                    {mockTeam.members.filter(member => member.user).map((member) => (
                       <PlayerCard
                         key={member.id}
-                        player={member.user}
+                        player={member.user!}
                         variant="detailed"
                         showStats
                         className="relative"
@@ -461,12 +467,12 @@ export default function TeamDetailPage() {
       </div>
 
       {/* Mobile Navigation */}
-      <MobileBottomNav 
+      <MobileBottomNav
         notifications={{
           teams: 1
         }}
       />
-      
+
       {/* Mobile Quick Action Button */}
       <MobileQuickAction />
     </div>

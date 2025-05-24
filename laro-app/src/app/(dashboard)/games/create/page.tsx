@@ -90,23 +90,38 @@ export default function CreateGamePage() {
 
   const handleSubmit = async (formData: GameForm) => {
     setIsLoading(true);
-    
+
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log('Creating game:', formData);
-      
+      // Call real API to create game
+      const response = await fetch('/api/games', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to create game');
+      }
+
+      console.log('Game created successfully:', result.data);
+
       // Show success state
       setIsSuccess(true);
-      
+
       // Redirect to game page after success
       setTimeout(() => {
-        router.push('/games/new-game-id'); // In real app, use actual game ID
+        router.push(`/games/${result.data.id}`);
       }, 2000);
-      
+
     } catch (error) {
       console.error('Error creating game:', error);
+      // You could add a toast notification here
+      alert(error instanceof Error ? error.message : 'Failed to create game');
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +142,7 @@ export default function CreateGamePage() {
         >
           <motion.div
             className="w-24 h-24 bg-court-500 rounded-full flex items-center justify-center mx-auto mb-6"
-            animate={{ 
+            animate={{
               scale: [1, 1.1, 1],
               boxShadow: [
                 '0 0 20px rgba(34, 139, 34, 0.5)',
@@ -135,7 +150,7 @@ export default function CreateGamePage() {
                 '0 0 20px rgba(34, 139, 34, 0.5)'
               ]
             }}
-            transition={{ 
+            transition={{
               duration: 2,
               repeat: Infinity,
               ease: "easeInOut"
@@ -143,15 +158,15 @@ export default function CreateGamePage() {
           >
             <CheckCircle className="w-12 h-12 text-white" />
           </motion.div>
-          
+
           <h1 className="text-3xl font-display font-bold text-white mb-4">
             Game Created Successfully! 🏀
           </h1>
-          
+
           <p className="text-primary-200 text-lg mb-6">
             Your game is live and players can now join. Get ready to ball!
           </p>
-          
+
           <div className="flex items-center justify-center space-x-2 text-primary-300">
             <div className="w-2 h-2 bg-primary-500 rounded-full animate-bounce" />
             <div className="w-2 h-2 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
@@ -165,24 +180,24 @@ export default function CreateGamePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
       {/* Mobile Sidebar */}
-      <MobileSidebar 
-        isOpen={mobileSidebarOpen} 
-        onClose={() => setMobileSidebarOpen(false)} 
+      <MobileSidebar
+        isOpen={mobileSidebarOpen}
+        onClose={() => setMobileSidebarOpen(false)}
       />
 
       <div className="flex">
         {/* Desktop Sidebar */}
         <div className="hidden lg:block">
-          <Sidebar 
-            isOpen={sidebarOpen} 
-            onToggle={() => setSidebarOpen(!sidebarOpen)} 
+          <Sidebar
+            isOpen={sidebarOpen}
+            onToggle={() => setSidebarOpen(!sidebarOpen)}
           />
         </div>
 
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <AuthenticatedHeader 
+          <AuthenticatedHeader
             user={mockUser}
             onMenuToggle={() => setMobileSidebarOpen(true)}
           />
@@ -237,7 +252,7 @@ export default function CreateGamePage() {
               >
                 🏀
               </motion.div>
-              
+
               <motion.div
                 className="absolute top-20 right-20 text-3xl opacity-20"
                 animate={{
@@ -281,7 +296,7 @@ export default function CreateGamePage() {
                 <h3 className="text-lg font-display font-bold text-white mb-4 text-center">
                   💡 Tips for Organizing Great Games
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="text-center">
                     <div className="w-12 h-12 bg-primary-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -292,7 +307,7 @@ export default function CreateGamePage() {
                       Schedule games during peak hours (evenings and weekends) for maximum participation.
                     </p>
                   </div>
-                  
+
                   <div className="text-center">
                     <div className="w-12 h-12 bg-court-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
                       <span className="text-2xl">🎯</span>
@@ -302,7 +317,7 @@ export default function CreateGamePage() {
                       Set appropriate skill level ranges to ensure competitive and fun games for everyone.
                     </p>
                   </div>
-                  
+
                   <div className="text-center">
                     <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
                       <span className="text-2xl">📍</span>
@@ -320,12 +335,12 @@ export default function CreateGamePage() {
       </div>
 
       {/* Mobile Navigation */}
-      <MobileBottomNav 
+      <MobileBottomNav
         notifications={{
           games: 3
         }}
       />
-      
+
       {/* Mobile Quick Action Button */}
       <MobileQuickAction />
     </div>

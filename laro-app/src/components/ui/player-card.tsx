@@ -29,8 +29,8 @@ export function PlayerCard({
         className={cn(
           'flex items-center space-x-3 p-3 rounded-lg border transition-all duration-200',
           interactive ? 'cursor-pointer hover:scale-102' : '',
-          selected 
-            ? 'border-primary-500 bg-primary-500/10' 
+          selected
+            ? 'border-primary-500 bg-primary-500/10'
             : 'border-primary-400/20 bg-dark-300/50',
           className
         )}
@@ -42,13 +42,13 @@ export function PlayerCard({
         <div className="relative">
           <div className="w-10 h-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white font-bold">
             {player.avatar ? (
-              <img 
-                src={player.avatar} 
-                alt={player.username} 
-                className="w-full h-full rounded-full object-cover" 
+              <img
+                src={player.avatar}
+                alt={player.username || 'User'}
+                className="w-full h-full rounded-full object-cover"
               />
             ) : (
-              player.username.charAt(0).toUpperCase()
+              (player.username || 'U').charAt(0).toUpperCase()
             )}
           </div>
           {/* Online indicator */}
@@ -79,8 +79,8 @@ export function PlayerCard({
         className={cn(
           'relative p-4 rounded-lg border-2 border-dashed transition-all duration-200',
           interactive ? 'cursor-pointer' : '',
-          selected 
-            ? 'border-primary-500 bg-primary-500/10' 
+          selected
+            ? 'border-primary-500 bg-primary-500/10'
             : 'border-primary-400/30 bg-dark-300/30 hover:border-primary-400/50',
           className
         )}
@@ -99,19 +99,19 @@ export function PlayerCard({
           {/* Avatar */}
           <div className="w-16 h-16 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-xl mx-auto mb-2">
             {player.avatar ? (
-              <img 
-                src={player.avatar} 
-                alt={player.username} 
-                className="w-full h-full rounded-full object-cover" 
+              <img
+                src={player.avatar}
+                alt={player.username || 'User'}
+                className="w-full h-full rounded-full object-cover"
               />
             ) : (
-              player.username.charAt(0).toUpperCase()
+              (player.username || 'U').charAt(0).toUpperCase()
             )}
           </div>
 
           {/* Name */}
-          <p className="font-medium text-primary-100 text-sm truncate">{player.username}</p>
-          
+          <p className="font-medium text-primary-100 text-sm truncate">{player.username || 'User'}</p>
+
           {/* Skill stars */}
           <div className="flex justify-center mt-1">
             <PlayerSkillRating level={player.skillLevel} />
@@ -144,13 +144,13 @@ export function PlayerCard({
           <div className="relative">
             <div className="w-12 h-12 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-lg basketball-glow">
               {player.avatar ? (
-                <img 
-                  src={player.avatar} 
-                  alt={player.username} 
-                  className="w-full h-full rounded-full object-cover" 
+                <img
+                  src={player.avatar}
+                  alt={player.username || 'User'}
+                  className="w-full h-full rounded-full object-cover"
                 />
               ) : (
-                player.username.charAt(0).toUpperCase()
+                (player.username || 'U').charAt(0).toUpperCase()
               )}
             </div>
             {/* Online indicator */}
@@ -159,7 +159,7 @@ export function PlayerCard({
 
           {/* Basic info */}
           <div>
-            <h3 className="font-bold text-primary-100 text-lg">{player.username}</h3>
+            <h3 className="font-bold text-primary-100 text-lg">{player.username || 'User'}</h3>
             <div className="flex items-center space-x-2 text-sm text-primary-300">
               {player.position && (
                 <>
@@ -227,13 +227,13 @@ export function PlayerCard({
 }
 
 // Preset player card variants
-export function TeamMemberCard({ 
-  player, 
+export function TeamMemberCard({
+  player,
   role = 'member',
   onRemove,
-  className 
-}: { 
-  player: User; 
+  className
+}: {
+  player: User;
   role?: 'captain' | 'co_captain' | 'member';
   onRemove?: () => void;
   className?: string;
@@ -257,7 +257,7 @@ export function TeamMemberCard({
   return (
     <div className={cn('relative', className)}>
       <PlayerCard player={player} variant="compact" showStats />
-      
+
       {/* Role badge */}
       <div className={cn(
         'absolute -top-2 -right-2 px-2 py-1 rounded-full text-xs font-bold flex items-center space-x-1',
@@ -281,19 +281,19 @@ export function TeamMemberCard({
   );
 }
 
-export function PlayerSearchResult({ 
-  player, 
+export function PlayerSearchResult({
+  player,
   onInvite,
-  className 
-}: { 
-  player: User; 
+  className
+}: {
+  player: User;
   onInvite?: () => void;
   className?: string;
 }) {
   return (
     <div className={cn('flex items-center justify-between p-4 bg-dark-300/50 rounded-lg border border-primary-400/20', className)}>
       <PlayerCard player={player} variant="compact" />
-      
+
       {onInvite && (
         <GameButton variant="primary" size="sm" onClick={onInvite}>
           Invite

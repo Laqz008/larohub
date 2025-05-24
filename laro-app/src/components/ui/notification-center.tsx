@@ -2,23 +2,18 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
-import { 
-  Bell, 
-  X, 
-  Check, 
-  Clock, 
-  Users, 
-  MapPin, 
+import {
+  Bell,
+  X,
+  Check,
+  Clock,
+  Users,
   Calendar,
-  Trophy,
   MessageCircle,
   UserPlus,
-  AlertCircle,
-  Star
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { GameButton } from '@/components/ui/game-button';
-import { formatTime, formatDate } from '@/lib/utils';
 
 interface Notification {
   id: string;
@@ -126,7 +121,7 @@ export function NotificationCenter({ isOpen, onClose, className }: NotificationC
   };
 
   const markAsRead = (notificationId: string) => {
-    setNotifications(prev => prev.map(notif => 
+    setNotifications(prev => prev.map(notif =>
       notif.id === notificationId ? { ...notif, isRead: true } : notif
     ));
   };
@@ -161,7 +156,7 @@ export function NotificationCenter({ isOpen, onClose, className }: NotificationC
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     if (days < 7) return `${days}d ago`;
-    return formatDate(timestamp);
+    return new Date(timestamp).toLocaleDateString();
   };
 
   return (
@@ -180,7 +175,7 @@ export function NotificationCenter({ isOpen, onClose, className }: NotificationC
           {/* Notification Panel */}
           <motion.div
             className={cn(
-              'fixed top-0 right-0 h-full w-full max-w-md bg-gradient-to-br from-dark-300/95 to-dark-400/95 backdrop-blur-sm border-l border-primary-400/20 z-50',
+              'fixed top-0 right-0 h-full w-full max-w-sm sm:max-w-md lg:max-w-lg bg-gradient-to-br from-dark-200 to-dark-300 backdrop-blur-md border-l border-primary-400 shadow-2xl z-50',
               className
             )}
             initial={{ x: '100%' }}
@@ -189,76 +184,113 @@ export function NotificationCenter({ isOpen, onClose, className }: NotificationC
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-primary-400/20">
-              <div>
-                <h2 className="text-xl font-display font-bold text-white">Notifications</h2>
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-primary-400 bg-dark-300">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl sm:text-2xl font-display font-bold text-white mb-1 truncate">Notifications</h2>
                 {unreadCount > 0 && (
-                  <p className="text-sm text-primary-300">{unreadCount} unread</p>
+                  <p className="text-sm text-white font-medium">{unreadCount} unread messages</p>
                 )}
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0 ml-2">
                 {unreadCount > 0 && (
-                  <GameButton variant="ghost" size="sm" onClick={markAllAsRead}>
+                  <motion.button
+                    onClick={markAllAsRead}
+                    className="hidden sm:flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-white hover:text-white hover:bg-primary-600 transition-all duration-200"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
                     <Check className="w-4 h-4" />
-                  </GameButton>
+                    <span>Mark all read</span>
+                  </motion.button>
                 )}
-                <GameButton variant="ghost" size="sm" onClick={onClose}>
-                  <X className="w-4 h-4" />
-                </GameButton>
+                {unreadCount > 0 && (
+                  <motion.button
+                    onClick={markAllAsRead}
+                    className="sm:hidden p-2 rounded-lg text-white hover:text-white hover:bg-primary-600 transition-all duration-200"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    title="Mark all read"
+                  >
+                    <Check className="w-4 h-4" />
+                  </motion.button>
+                )}
+                <motion.button
+                  onClick={onClose}
+                  className="p-2 rounded-lg text-white hover:text-white hover:bg-red-600 transition-all duration-200"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                </motion.button>
               </div>
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex space-x-1 p-4 bg-dark-200/30">
-              {[
-                { id: 'all', label: 'All', count: notifications.length },
-                { id: 'unread', label: 'Unread', count: unreadCount },
-                { id: 'games', label: 'Games', count: notifications.filter(n => ['game_reminder', 'game_update', 'game_starting', 'game_cancelled', 'player_joined', 'player_left'].includes(n.type)).length },
-                { id: 'messages', label: 'Messages', count: notifications.filter(n => n.type === 'message').length }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setFilter(tab.id as any)}
-                  className={cn(
-                    'flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                    filter === tab.id
-                      ? 'bg-primary-500 text-white'
-                      : 'text-primary-300 hover:text-primary-100 hover:bg-primary-400/10'
-                  )}
-                >
-                  <span>{tab.label}</span>
-                  {tab.count > 0 && (
-                    <span className={cn(
-                      'px-1.5 py-0.5 rounded-full text-xs',
-                      filter === tab.id ? 'bg-white/20' : 'bg-primary-500/20'
-                    )}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              ))}
+            <div className="p-3 bg-dark-200 border-b border-primary-400">
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:space-x-2">
+                {[
+                  { id: 'all', label: 'All', count: notifications.length, emoji: '📋' },
+                  { id: 'unread', label: 'Unread', count: unreadCount, emoji: '🔔' },
+                  { id: 'games', label: 'Games', count: notifications.filter(n => ['game_reminder', 'game_update', 'game_starting', 'game_cancelled', 'player_joined', 'player_left'].includes(n.type)).length, emoji: '🏀' },
+                  { id: 'messages', label: 'Messages', count: notifications.filter(n => n.type === 'message').length, emoji: '💬' }
+                ].map((tab) => (
+                  <motion.button
+                    key={tab.id}
+                    onClick={() => setFilter(tab.id as any)}
+                    className={cn(
+                      'flex items-center justify-center space-x-1.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 min-w-0',
+                      'sm:flex-1 sm:text-sm sm:px-4 sm:py-3 sm:rounded-xl',
+                      filter === tab.id
+                        ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg'
+                        : 'text-white hover:text-white hover:bg-primary-600 border border-primary-400'
+                    )}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <span className="text-sm sm:text-base flex-shrink-0">{tab.emoji}</span>
+                    <span className="font-semibold truncate">{tab.label}</span>
+                    {tab.count > 0 && (
+                      <motion.span
+                        className={cn(
+                          'px-1.5 py-0.5 rounded-full text-xs font-bold min-w-[18px] text-center flex-shrink-0',
+                          'sm:px-2 sm:py-1 sm:min-w-[20px]',
+                          filter === tab.id
+                            ? 'bg-white text-dark-400'
+                            : 'bg-primary-500 text-white'
+                        )}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      >
+                        {tab.count > 99 ? '99+' : tab.count}
+                      </motion.span>
+                    )}
+                  </motion.button>
+                ))}
+              </div>
             </div>
 
             {/* Notifications List */}
             <div className="flex-1 overflow-y-auto">
               {filteredNotifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 text-center">
+                <div className="flex flex-col items-center justify-center h-64 text-center px-6">
                   <Bell className="w-16 h-16 text-primary-400 mb-4" />
                   <h3 className="text-lg font-medium text-white mb-2">No notifications</h3>
-                  <p className="text-sm text-primary-300">
+                  <p className="text-sm text-white">
                     {filter === 'unread' ? 'All caught up!' : 'You\'ll see notifications here when they arrive.'}
                   </p>
                 </div>
               ) : (
-                <div className="space-y-1 p-4">
-                  {filteredNotifications.map((notification) => (
+                <div className="space-y-3 p-4">
+                  {filteredNotifications.map((notification, index) => (
                     <motion.div
                       key={notification.id}
                       className={cn(
-                        'relative p-4 rounded-lg border-l-4 transition-all duration-200 cursor-pointer',
-                        notification.isRead 
-                          ? 'bg-dark-200/30 hover:bg-dark-200/50' 
-                          : 'bg-primary-500/10 hover:bg-primary-500/20',
+                        'relative p-4 mx-1 rounded-xl border-l-4 transition-all duration-200 cursor-pointer shadow-sm',
+                        'sm:p-6 sm:mx-2',
+                        notification.isRead
+                          ? 'bg-dark-300 hover:bg-dark-200 border-primary-400'
+                          : 'bg-dark-200 hover:bg-dark-100 border-primary-400',
                         getPriorityColor(notification.priority)
                       )}
                       onClick={() => {
@@ -267,61 +299,92 @@ export function NotificationCenter({ isOpen, onClose, className }: NotificationC
                           window.location.href = notification.actionUrl;
                         }
                       }}
-                      whileHover={{ x: 4 }}
+                      whileHover={{ x: 6, scale: 1.02 }}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
                     >
-                      <div className="flex items-start space-x-3">
+                      <div className="flex items-start space-x-2 sm:space-x-3">
                         {/* Icon */}
-                        <div className="flex-shrink-0 mt-1">
+                        <div className="flex-shrink-0 mt-0.5 sm:mt-1">
                           {getNotificationIcon(notification.type)}
                         </div>
 
                         {/* Content */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between">
-                            <h4 className={cn(
-                              'font-medium truncate',
-                              notification.isRead ? 'text-primary-200' : 'text-white'
-                            )}>
+                          {/* Title and Actions Row */}
+                          <div className="flex items-start justify-between mb-2 sm:mb-3">
+                            <h4 className="text-base sm:text-lg font-bold font-display leading-tight text-white flex-1 pr-2">
                               {notification.title}
                             </h4>
-                            <div className="flex items-center space-x-2 ml-2">
-                              <span className="text-xs text-primary-400 whitespace-nowrap">
-                                {getTimeAgo(notification.timestamp)}
-                              </span>
-                              <button
+                            <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0 ml-1">
+                              {!notification.isRead && (
+                                <motion.div
+                                  className="w-2 h-2 sm:w-3 sm:h-3 bg-gradient-to-r from-primary-400 to-primary-500 rounded-full shadow-lg"
+                                  animate={{
+                                    scale: [1, 1.2, 1]
+                                  }}
+                                  transition={{
+                                    duration: 2,
+                                    repeat: Infinity,
+                                    ease: "easeInOut"
+                                  }}
+                                />
+                              )}
+                              <motion.button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   deleteNotification(notification.id);
                                 }}
-                                className="text-primary-400 hover:text-red-400 transition-colors"
+                                className="text-white hover:text-red-300 transition-colors p-1 sm:p-1.5 rounded-lg hover:bg-red-600 border border-transparent hover:border-red-400"
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
                               >
-                                <X className="w-3 h-3" />
-                              </button>
+                                <X className="w-3 h-3 sm:w-4 sm:h-4" />
+                              </motion.button>
                             </div>
                           </div>
-                          
-                          <p className={cn(
-                            'text-sm mt-1 line-clamp-2',
-                            notification.isRead ? 'text-primary-300' : 'text-primary-200'
-                          )}>
+
+                          {/* Timestamp Row */}
+                          <div className="mb-2 sm:mb-3">
+                            <span className="text-xs text-white font-medium bg-dark-400 px-2 py-1 rounded-full">
+                              {getTimeAgo(notification.timestamp)}
+                            </span>
+                          </div>
+
+                          <p className="text-sm leading-relaxed mb-3 sm:mb-4 text-white">
                             {notification.message}
                           </p>
 
-                          {/* Priority indicator */}
-                          {notification.priority === 'high' && !notification.isRead && (
-                            <div className="flex items-center space-x-1 mt-2">
-                              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                              <span className="text-xs text-red-400 font-medium">High Priority</span>
-                            </div>
-                          )}
-                        </div>
+                          {/* Priority indicator and action buttons */}
+                          <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+                            {notification.priority === 'high' && !notification.isRead && (
+                              <div className="flex items-center space-x-2">
+                                <motion.div
+                                  className="w-2 h-2 bg-red-500 rounded-full"
+                                  animate={{ scale: [1, 1.3, 1] }}
+                                  transition={{ duration: 1, repeat: Infinity }}
+                                />
+                                <span className="text-xs text-red-300 font-bold">🚨 High Priority</span>
+                              </div>
+                            )}
 
-                        {/* Unread indicator */}
-                        {!notification.isRead && (
-                          <div className="w-2 h-2 bg-primary-500 rounded-full flex-shrink-0 mt-2" />
-                        )}
+                            {notification.actionUrl && (
+                              <motion.button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.location.href = notification.actionUrl!;
+                                }}
+                                className="inline-flex items-center justify-center space-x-1 text-xs sm:text-sm text-white hover:text-primary-300 font-semibold transition-colors px-3 py-2 rounded-lg bg-primary-600 hover:bg-primary-500 border border-primary-400 w-full sm:w-auto"
+                                whileHover={{ x: 2, scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                              >
+                                <span>View Details</span>
+                                <span>→</span>
+                              </motion.button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </motion.div>
                   ))}
@@ -330,14 +393,19 @@ export function NotificationCenter({ isOpen, onClose, className }: NotificationC
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-primary-400/20">
+            <div className="p-4 border-t border-primary-400 bg-dark-300">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-primary-300">
-                  {filteredNotifications.length} notification{filteredNotifications.length !== 1 ? 's' : ''}
+                <span className="text-white font-medium">
+                  🏀 {filteredNotifications.length} notification{filteredNotifications.length !== 1 ? 's' : ''}
                 </span>
-                <GameButton variant="ghost" size="sm">
-                  Settings
-                </GameButton>
+                <motion.button
+                  className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-white hover:text-white hover:bg-primary-600 transition-all duration-200"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <span>⚙️</span>
+                  <span>Settings</span>
+                </motion.button>
               </div>
             </div>
           </motion.div>

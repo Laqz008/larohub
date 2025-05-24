@@ -6,11 +6,21 @@ import { usePathname } from 'next/navigation';
 import { Home, Users, MapPin, Calendar, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+interface NotificationData {
+  count: number;
+  type: 'info' | 'warning' | 'success' | 'urgent';
+  label?: string;
+  timestamp?: Date;
+}
+
 interface MobileBottomNavProps {
   notifications?: {
-    games?: number;
-    teams?: number;
-    messages?: number;
+    dashboard?: NotificationData | number;
+    teams?: NotificationData | number;
+    courts?: NotificationData | number;
+    games?: NotificationData | number;
+    profile?: NotificationData | number;
+    achievements?: NotificationData | number;
   };
   className?: string;
 }
@@ -68,8 +78,12 @@ export function MobileBottomNav({ notifications, className }: MobileBottomNavPro
       <div className="flex items-center justify-around px-2 py-2">
         {navigationItems.map((item, index) => {
           const isActive = pathname === item.href;
-          const Icon = item.icon;
-          const notificationCount = notifications?.[item.name.toLowerCase() as keyof typeof notifications];
+          const notificationData = notifications?.[item.name.toLowerCase() as keyof typeof notifications];
+
+          // Handle both legacy number format and new NotificationData format
+          const notificationCount = typeof notificationData === 'number' ? notificationData : notificationData?.count || 0;
+          const notificationType = typeof notificationData === 'object' ? notificationData.type : 'info';
+          const notificationLabel = typeof notificationData === 'object' ? notificationData.label : undefined;
 
           return (
             <motion.div
@@ -111,23 +125,67 @@ export function MobileBottomNav({ notifications, className }: MobileBottomNavPro
                 >
                   <span className="text-lg">{item.emoji}</span>
 
-                  {/* Notification badge */}
+                  {/* Enhanced Notification badge */}
                   {notificationCount && notificationCount > 0 && (
-                    <motion.span
-                      className="absolute -top-1 -right-1 bg-primary-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold"
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
+                    <motion.div
+                      className="absolute -top-2 -right-2"
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
                       transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      whileHover={{ scale: 1.1 }}
                     >
-                      {notificationCount > 9 ? '9+' : notificationCount}
-                    </motion.span>
+                      <motion.span
+                        className={cn(
+                          'flex items-center justify-center text-white text-xs font-bold font-accent rounded-full border-2 border-dark-400 shadow-lg',
+                          'min-w-[24px] h-6 px-1.5',
+                          // Basketball-themed colors based on notification type - solid backgrounds for better text contrast
+                          notificationType === 'urgent' && 'bg-red-600',
+                          notificationType === 'warning' && 'bg-orange-500',
+                          notificationType === 'success' && 'bg-court-600',
+                          notificationType === 'info' && 'bg-primary-600'
+                        )}
+                        animate={{
+                          boxShadow: [
+                            '0 0 10px rgba(255, 107, 53, 0.5)',
+                            '0 0 20px rgba(255, 107, 53, 0.8)',
+                            '0 0 10px rgba(255, 107, 53, 0.5)'
+                          ]
+                        }}
+                        transition={{
+                          boxShadow: {
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: "easeInOut"
+                          }
+                        }}
+                        title={notificationLabel || `${notificationCount} new ${item.name.toLowerCase()} notifications`}
+                      >
+                        {notificationCount > 99 ? '99+' : notificationCount > 9 ? '9+' : notificationCount}
+                      </motion.span>
+
+                      {/* Pulse ring effect for urgent notifications */}
+                      {notificationType === 'urgent' && (
+                        <motion.div
+                          className="absolute inset-0 rounded-full border-2 border-red-400"
+                          animate={{
+                            scale: [1, 1.5, 1],
+                            opacity: [0.8, 0, 0.8]
+                          }}
+                          transition={{
+                            duration: 1.5,
+                            repeat: Infinity,
+                            ease: "easeInOut"
+                          }}
+                        />
+                      )}
+                    </motion.div>
                   )}
                 </motion.div>
 
                 {/* Label */}
                 <span className={cn(
                   'text-xs font-medium font-primary relative z-10',
-                  isActive ? 'text-primary-100' : 'text-primary-300'
+                  isActive ? 'text-white' : 'text-white'
                 )}>
                   {item.name}
                 </span>

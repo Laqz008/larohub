@@ -32,8 +32,8 @@ export function TeamCard({
   className
 }: TeamCardProps) {
   const winRate = team.gamesPlayed > 0 ? Math.round((team.wins / team.gamesPlayed) * 100) : 0;
-  const avgSkillLevel = team.members.length > 0 
-    ? team.members.reduce((sum, member) => sum + member.user.skillLevel, 0) / team.members.length 
+  const avgSkillLevel = team.members.length > 0
+    ? team.members.reduce((sum, member) => sum + member.user.skillLevel, 0) / team.members.length
     : 0;
 
   if (variant === 'compact') {
@@ -129,8 +129,8 @@ export function TeamCard({
             <div>
               <h3 className="text-xl font-display font-bold text-white">{team.name}</h3>
               <p className="text-primary-300">
-                {userRole === 'captain' ? '👑 Captain' : 
-                 userRole === 'co_captain' ? '⭐ Co-Captain' : 
+                {userRole === 'captain' ? '👑 Captain' :
+                 userRole === 'co_captain' ? '⭐ Co-Captain' :
                  userRole === 'member' ? '👤 Member' : 'Not a member'}
               </p>
             </div>
@@ -273,7 +273,7 @@ export function TeamCard({
             View All
           </Link>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           {team.members.slice(0, 5).map((member) => (
             <div
@@ -281,15 +281,15 @@ export function TeamCard({
               className="relative w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white text-xs font-bold"
             >
               {member.user.avatar ? (
-                <img 
-                  src={member.user.avatar} 
-                  alt={member.user.username} 
-                  className="w-full h-full rounded-full object-cover" 
+                <img
+                  src={member.user.avatar}
+                  alt={member.user.username || 'User'}
+                  className="w-full h-full rounded-full object-cover"
                 />
               ) : (
-                member.user.username.charAt(0).toUpperCase()
+                (member.user.username || 'U').charAt(0).toUpperCase()
               )}
-              
+
               {/* Role indicator */}
               {member.role === 'captain' && (
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
@@ -298,7 +298,7 @@ export function TeamCard({
               )}
             </div>
           ))}
-          
+
           {team.memberCount > 5 && (
             <div className="w-8 h-8 bg-dark-200 rounded-full flex items-center justify-center text-primary-300 text-xs font-bold">
               +{team.memberCount - 5}

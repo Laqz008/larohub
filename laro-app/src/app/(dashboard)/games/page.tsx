@@ -2,11 +2,11 @@
 
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Calendar, 
+import {
+  Plus,
+  Search,
+  Filter,
+  Calendar,
   Clock,
   MapPin,
   Users,
@@ -31,126 +31,42 @@ const mockUser = {
 const mockGames: Game[] = [
   {
     id: '1',
-    title: 'Friday Night Pickup',
-    description: 'Competitive pickup game. All skill levels welcome! Bring your A-game.',
+    hostTeamId: 'team1',
+    courtId: '1',
+    scheduledTime: new Date('2024-12-28T18:00:00'),
+    durationMinutes: 120,
     gameType: 'pickup',
-    status: 'scheduled' as GameStatus,
-    scheduledAt: new Date('2024-12-28T18:00:00'),
-    duration: 120,
-    maxPlayers: 10,
-    currentPlayers: 7,
-    skillLevel: { min: 4, max: 8 },
-    isPrivate: false,
-    organizer: {
-      id: 'user1',
-      username: 'PickupKing',
-      email: 'pickup@example.com',
-      rating: 1850,
-      skillLevel: 7,
-      isVerified: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    court: {
-      id: '1',
-      name: 'Venice Beach Courts',
-      address: '1800 Ocean Front Walk, Venice, CA',
-      latitude: 33.9850,
-      longitude: -118.4695,
-      courtType: 'outdoor',
-      surfaceType: 'Asphalt',
-      hasLighting: true,
-      hasParking: true,
-      rating: 4.5,
-      reviewCount: 127,
-      isVerified: true,
-      createdAt: new Date()
-    },
-    participants: [],
-    createdAt: new Date('2024-12-20'),
-    updatedAt: new Date('2024-12-20')
+    status: 'open' as GameStatus,
+    minSkillLevel: 4,
+    maxSkillLevel: 8,
+    maxDistance: 25,
+    createdAt: new Date('2024-12-20')
   },
   {
     id: '2',
-    title: 'Saturday Morning Scrimmage',
-    description: 'Organized scrimmage with team selection. Great for improving your game!',
-    gameType: 'scrimmage',
-    status: 'scheduled' as GameStatus,
-    scheduledAt: new Date('2024-12-29T09:00:00'),
-    duration: 180,
-    maxPlayers: 12,
-    currentPlayers: 12,
-    skillLevel: { min: 6, max: 10 },
-    isPrivate: false,
-    organizer: {
-      id: 'user2',
-      username: 'ScrimmageCoach',
-      email: 'coach@example.com',
-      rating: 2100,
-      skillLevel: 9,
-      isVerified: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    court: {
-      id: '2',
-      name: 'Downtown Athletic Club',
-      address: '123 S Figueroa St, Los Angeles, CA',
-      latitude: 34.0522,
-      longitude: -118.2437,
-      courtType: 'indoor',
-      surfaceType: 'Hardwood',
-      hasLighting: true,
-      hasParking: true,
-      rating: 4.8,
-      reviewCount: 89,
-      isVerified: true,
-      createdAt: new Date()
-    },
-    participants: [],
-    createdAt: new Date('2024-12-18'),
-    updatedAt: new Date('2024-12-18')
+    hostTeamId: 'team2',
+    courtId: '2',
+    scheduledTime: new Date('2024-12-29T09:00:00'),
+    durationMinutes: 180,
+    gameType: 'competitive',
+    status: 'open' as GameStatus,
+    minSkillLevel: 6,
+    maxSkillLevel: 10,
+    maxDistance: 30,
+    createdAt: new Date('2024-12-18')
   },
   {
     id: '3',
-    title: 'Elite Training Session',
-    description: 'High-intensity training for advanced players. Focus on fundamentals and game situations.',
-    gameType: 'practice',
-    status: 'scheduled' as GameStatus,
-    scheduledAt: new Date('2024-12-30T16:00:00'),
-    duration: 150,
-    maxPlayers: 8,
-    currentPlayers: 5,
-    skillLevel: { min: 8, max: 10 },
-    isPrivate: true,
-    organizer: {
-      id: 'user3',
-      username: 'EliteTrainer',
-      email: 'trainer@example.com',
-      rating: 2250,
-      skillLevel: 10,
-      isVerified: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    court: {
-      id: '3',
-      name: 'UCLA Recreation Center',
-      address: '221 Westwood Plaza, Los Angeles, CA',
-      latitude: 34.0689,
-      longitude: -118.4452,
-      courtType: 'indoor',
-      surfaceType: 'Hardwood',
-      hasLighting: true,
-      hasParking: true,
-      rating: 4.7,
-      reviewCount: 67,
-      isVerified: true,
-      createdAt: new Date()
-    },
-    participants: [],
-    createdAt: new Date('2024-12-15'),
-    updatedAt: new Date('2024-12-15')
+    hostTeamId: 'team3',
+    courtId: '3',
+    scheduledTime: new Date('2024-12-30T16:00:00'),
+    durationMinutes: 150,
+    gameType: 'casual',
+    status: 'open' as GameStatus,
+    minSkillLevel: 8,
+    maxSkillLevel: 10,
+    maxDistance: 20,
+    createdAt: new Date('2024-12-15')
   }
 ];
 
@@ -160,19 +76,17 @@ export default function GamesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'my_games' | 'past'>('upcoming');
-  const [filters, setFilters] = useState<GameFilters>({
-    gameType: undefined,
-    skillLevel: undefined,
-    maxDistance: undefined,
-    dateRange: undefined,
-    status: undefined
+  const [filters, setFilters] = useState({
+    gameType: undefined as string | undefined,
+    maxDistance: undefined as number | undefined,
+    dateRange: undefined as string | undefined,
+    status: undefined as string | undefined
   });
 
   const filteredGames = mockGames.filter(game => {
-    // Search filter
-    if (searchQuery && !game.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !game.description?.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !game.court.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+    // Search filter - simplified since Game interface changed
+    if (searchQuery && !game.id.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !game.gameType.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
 
@@ -180,13 +94,12 @@ export default function GamesPage() {
     const now = new Date();
     switch (activeTab) {
       case 'upcoming':
-        return game.status === 'scheduled' && new Date(game.scheduledAt) > now;
+        return game.status === 'open' && new Date(game.scheduledTime) > now;
       case 'my_games':
         // In real app, filter by user participation
-        return game.organizer.username === mockUser.username || 
-               Math.random() > 0.7; // Mock participation
+        return Math.random() > 0.7; // Mock participation
       case 'past':
-        return game.status === 'completed' || new Date(game.scheduledAt) < now;
+        return game.status === 'completed' || new Date(game.scheduledTime) < now;
       default:
         return true;
     }
@@ -208,24 +121,24 @@ export default function GamesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
       {/* Mobile Sidebar */}
-      <MobileSidebar 
-        isOpen={mobileSidebarOpen} 
-        onClose={() => setMobileSidebarOpen(false)} 
+      <MobileSidebar
+        isOpen={mobileSidebarOpen}
+        onClose={() => setMobileSidebarOpen(false)}
       />
 
       <div className="flex">
         {/* Desktop Sidebar */}
         <div className="hidden lg:block">
-          <Sidebar 
-            isOpen={sidebarOpen} 
-            onToggle={() => setSidebarOpen(!sidebarOpen)} 
+          <Sidebar
+            isOpen={sidebarOpen}
+            onToggle={() => setSidebarOpen(!sidebarOpen)}
           />
         </div>
 
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <AuthenticatedHeader 
+          <AuthenticatedHeader
             user={mockUser}
             onMenuToggle={() => setMobileSidebarOpen(true)}
           />
@@ -338,7 +251,7 @@ export default function GamesPage() {
                 Found {filteredGames.length} games
                 {searchQuery && ` matching "${searchQuery}"`}
               </p>
-              
+
               <div className="flex items-center space-x-2 text-sm text-primary-300">
                 <span>Sort by:</span>
                 <select className="bg-dark-200/50 border border-primary-400/30 rounded px-2 py-1 text-primary-100 focus:outline-none focus:ring-1 focus:ring-primary-500">
@@ -388,12 +301,12 @@ export default function GamesPage() {
                   No games found
                 </h3>
                 <p className="text-primary-300 mb-6">
-                  {searchQuery 
+                  {searchQuery
                     ? `No games match your search for "${searchQuery}"`
                     : 'No games match your current filters'
                   }
                 </p>
-                <GameButton 
+                <GameButton
                   variant="primary"
                   size="lg"
                   onClick={handleCreateGame}
@@ -409,12 +322,12 @@ export default function GamesPage() {
       </div>
 
       {/* Mobile Navigation */}
-      <MobileBottomNav 
+      <MobileBottomNav
         notifications={{
           games: 3
         }}
       />
-      
+
       {/* Mobile Quick Action Button */}
       <MobileQuickAction />
     </div>

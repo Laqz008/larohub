@@ -198,7 +198,7 @@ export function AuthenticatedHeader({ user, onMenuToggle, className }: {
 
             <motion.div className="flex items-center space-x-2" whileHover={{ scale: 1.05 }}>
               <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center basketball-glow">
-                <span className="text-white font-bold text-lg">🏀</span>
+                <span className="text-white font-bold text-lg" role="img" aria-label="Basketball">🏀</span>
               </div>
               <div className="hidden sm:block">
                 <h1 className="text-2xl font-display font-bold bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent">
@@ -230,14 +230,14 @@ export function AuthenticatedHeader({ user, onMenuToggle, className }: {
               whileHover={{ scale: 1.02 }}
             >
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-primary-100">{user.username}</p>
-                <p className="text-xs text-primary-300 font-accent">Rating: {user.rating}</p>
+                <p className="text-sm font-medium text-white">{user.username || 'User'}</p>
+                <p className="text-xs text-white font-accent">Rating: {user.rating || 0}</p>
               </div>
               <div className="w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white font-bold">
                 {user.avatar ? (
-                  <img src={user.avatar} alt={user.username} className="w-full h-full rounded-full object-cover" />
+                  <img src={user.avatar} alt={user.username || 'User'} className="w-full h-full rounded-full object-cover" />
                 ) : (
-                  user.username.charAt(0).toUpperCase()
+                  (user.username || 'U').charAt(0).toUpperCase()
                 )}
               </div>
             </motion.div>

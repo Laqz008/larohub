@@ -4,17 +4,37 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { GameButton } from '@/components/ui/game-button';
 import { cn } from '@/lib/utils';
+import { useLogin } from '@/lib/hooks/use-api';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const loginMutation = useLogin({
+    onSuccess: (data) => {
+      console.log('Login successful:', data);
+      // Store token in localStorage
+      if (data.data?.tokens?.accessToken) {
+        localStorage.setItem('auth-token', data.data.tokens.accessToken);
+      }
+      // Redirect to dashboard
+      router.push('/dashboard');
+    },
+    onError: (error: any) => {
+      console.error('Login failed:', error);
+      setErrors({
+        general: error.response?.data?.message || 'Login failed. Please try again.'
+      });
+    }
+  });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -27,7 +47,6 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setErrors({});
 
     // Basic validation
@@ -43,20 +62,11 @@ export default function LoginPage() {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      setIsLoading(false);
       return;
     }
 
-    // Simulate API call
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      // Handle successful login here
-      console.log('Login successful:', formData);
-    } catch (error) {
-      setErrors({ general: 'Login failed. Please try again.' });
-    } finally {
-      setIsLoading(false);
-    }
+    // Call the login API
+    loginMutation.mutate(formData);
   };
 
   return (
@@ -234,11 +244,11 @@ export default function LoginPage() {
               size="lg"
               fullWidth
               glow
-              loading={isLoading}
+              loading={loginMutation.isPending}
               icon={<ArrowRight className="w-5 h-5" />}
               iconPosition="right"
             >
-              {isLoading ? 'Signing In...' : 'Sign In'}
+              {loginMutation.isPending ? 'Signing In...' : 'Sign In'}
             </GameButton>
 
             {/* Divider */}
@@ -271,7 +281,7 @@ export default function LoginPage() {
           {/* Sign Up Link */}
           <div className="mt-6 text-center">
             <p className="text-primary-200">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link
                 href="/register"
                 className="text-primary-400 hover:text-primary-300 font-medium transition-colors"

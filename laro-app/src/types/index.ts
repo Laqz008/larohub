@@ -3,7 +3,7 @@ export type Position = 'PG' | 'SG' | 'SF' | 'PF' | 'C';
 
 export const POSITIONS = {
   PG: 'Point Guard',
-  SG: 'Shooting Guard', 
+  SG: 'Shooting Guard',
   SF: 'Small Forward',
   PF: 'Power Forward',
   C: 'Center'
@@ -101,7 +101,7 @@ export interface Court {
 }
 
 // Game Types
-export type GameType = 'casual' | 'competitive' | 'tournament';
+export type GameType = 'casual' | 'competitive' | 'tournament' | 'pickup';
 export type GameStatus = 'open' | 'matched' | 'in_progress' | 'completed' | 'cancelled';
 
 export interface Game {
@@ -183,11 +183,25 @@ export interface LoginForm {
   password: string;
 }
 
+export interface LoginFormData {
+  email: string;
+  password: string;
+}
+
 export interface RegisterForm {
   username: string;
   email: string;
   password: string;
   confirmPassword: string;
+  position?: Position;
+  skillLevel: number;
+  city?: string;
+}
+
+export interface RegisterFormData {
+  username: string;
+  email: string;
+  password: string;
   position?: Position;
   skillLevel: number;
   city?: string;
@@ -224,7 +238,7 @@ export interface StatCardProps {
     label?: string;
   };
   animated?: boolean;
-  glowColor?: string;
+  glowColor?: 'primary' | 'success' | 'warning' | 'danger' | 'info';
   size?: 'sm' | 'md' | 'lg';
 }
 
@@ -239,8 +253,9 @@ export interface GameButtonProps {
   iconPosition?: 'left' | 'right';
   fullWidth?: boolean;
   onClick?: () => void;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   className?: string;
+  type?: 'button' | 'submit' | 'reset';
 }
 
 export interface PlayerCardProps {

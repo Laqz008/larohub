@@ -4,11 +4,14 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, User, MapPin, ArrowRight, Star } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { GameButton } from '@/components/ui/game-button';
 import { cn } from '@/lib/utils';
-import { POSITIONS, SKILL_LEVELS } from '@/types';
+import { useRegister } from '@/lib/hooks/use-api';
+import { POSITIONS, SKILL_LEVELS, Position, RegisterFormData } from '@/types';
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     username: '',
@@ -21,8 +24,25 @@ export default function RegisterPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const registerMutation = useRegister({
+    onSuccess: (data) => {
+      console.log('Registration successful:', data);
+      // Store token in localStorage
+      if (data.data?.tokens?.accessToken) {
+        localStorage.setItem('auth-token', data.data.tokens.accessToken);
+      }
+      // Redirect to dashboard
+      router.push('/dashboard');
+    },
+    onError: (error: any) => {
+      console.error('Registration failed:', error);
+      setErrors({
+        general: error.response?.data?.message || 'Registration failed. Please try again.'
+      });
+    }
+  });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -42,25 +62,25 @@ export default function RegisterPage() {
 
   const validateStep1 = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.username) {
       newErrors.username = 'Username is required';
     } else if (formData.username.length < 3) {
       newErrors.username = 'Username must be at least 3 characters';
     }
-    
+
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email';
     }
-    
+
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
     }
-    
+
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password';
     } else if (formData.password !== formData.confirmPassword) {
@@ -73,11 +93,11 @@ export default function RegisterPage() {
 
   const validateStep2 = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.position) {
       newErrors.position = 'Please select your position';
     }
-    
+
     if (!formData.skillLevel) {
       newErrors.skillLevel = 'Please select your skill level';
     }
@@ -94,21 +114,23 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateStep2()) return;
-    
-    setIsLoading(true);
+
     setErrors({});
 
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('Registration successful:', formData);
-      // Handle successful registration here
-    } catch (error) {
-      setErrors({ general: 'Registration failed. Please try again.' });
-    } finally {
-      setIsLoading(false);
-    }
+    // Prepare data for API
+    const registrationData: RegisterFormData = {
+      username: formData.username,
+      email: formData.email,
+      password: formData.password,
+      position: formData.position as Position | undefined,
+      skillLevel: formData.skillLevel,
+      city: formData.city || undefined
+    };
+
+    // Call the registration API
+    registerMutation.mutate(registrationData);
   };
 
   return (
@@ -506,11 +528,11 @@ export default function RegisterPage() {
                     size="lg"
                     className="flex-1"
                     glow
-                    loading={isLoading}
+                    loading={registerMutation.isPending}
                     icon={<ArrowRight className="w-5 h-5" />}
                     iconPosition="right"
                   >
-                    {isLoading ? 'Creating Account...' : 'Create Account'}
+                    {registerMutation.isPending ? 'Creating Account...' : 'Create Account'}
                   </GameButton>
                 </div>
               </motion.div>

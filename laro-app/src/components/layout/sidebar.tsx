@@ -4,14 +4,14 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  Home, 
-  Users, 
-  MapPin, 
-  Calendar, 
-  User, 
-  Trophy, 
-  Settings, 
+import {
+  Home,
+  Users,
+  MapPin,
+  Calendar,
+  User,
+  Trophy,
+  Settings,
   LogOut,
   ChevronLeft,
   ChevronRight
@@ -93,10 +93,10 @@ export function Sidebar({ isOpen = true, onToggle, className }: SidebarProps) {
               <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center basketball-glow">
                 <span className="text-white font-bold text-sm">🏀</span>
               </div>
-              <span className="text-lg font-display font-bold text-primary-400">LARO</span>
+              <span className="text-lg font-display font-bold text-white">LARO</span>
             </motion.div>
           )}
-          
+
           <motion.button
             onClick={onToggle}
             className="p-2 rounded-lg text-primary-400 hover:text-primary-300 hover:bg-primary-400/10 transition-colors"
@@ -117,7 +117,7 @@ export function Sidebar({ isOpen = true, onToggle, className }: SidebarProps) {
         {navigationItems.map((item, index) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
-          
+
           return (
             <motion.div
               key={item.name}
@@ -130,8 +130,8 @@ export function Sidebar({ isOpen = true, onToggle, className }: SidebarProps) {
                 className={cn(
                   'flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 group relative',
                   isActive
-                    ? 'bg-primary-500/20 text-primary-100 border border-primary-400/30'
-                    : 'text-primary-300 hover:text-primary-100 hover:bg-primary-400/10'
+                    ? 'bg-primary-500/20 text-white border border-primary-400/30'
+                    : 'text-white hover:text-white hover:bg-primary-400/10'
                 )}
                 onMouseEnter={() => setHoveredItem(item.name)}
                 onMouseLeave={() => setHoveredItem(null)}
@@ -161,7 +161,7 @@ export function Sidebar({ isOpen = true, onToggle, className }: SidebarProps) {
                       <Icon className="w-5 h-5" />
                     )}
                   </motion.div>
-                  
+
                   {/* Glow effect for active item */}
                   {isActive && (
                     <motion.div
@@ -175,10 +175,7 @@ export function Sidebar({ isOpen = true, onToggle, className }: SidebarProps) {
                 {/* Label */}
                 {isOpen && (
                   <motion.span
-                    className={cn(
-                      'font-medium font-primary',
-                      isActive ? 'text-primary-100' : 'group-hover:text-primary-100'
-                    )}
+                    className="font-medium font-primary text-white"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.1 }}
@@ -190,7 +187,7 @@ export function Sidebar({ isOpen = true, onToggle, className }: SidebarProps) {
                 {/* Tooltip for collapsed state */}
                 {!isOpen && hoveredItem === item.name && (
                   <motion.div
-                    className="absolute left-full ml-2 px-2 py-1 bg-dark-200 text-primary-100 text-sm rounded-lg border border-primary-400/20 whitespace-nowrap z-50"
+                    className="absolute left-full ml-2 px-2 py-1 bg-dark-200 text-white text-sm rounded-lg border border-primary-400/20 whitespace-nowrap z-50"
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
@@ -224,22 +221,22 @@ export function Sidebar({ isOpen = true, onToggle, className }: SidebarProps) {
             href="/settings"
             className={cn(
               'flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200',
-              'text-primary-300 hover:text-primary-100 hover:bg-primary-400/10'
+              'text-white hover:text-white hover:bg-primary-400/10'
             )}
           >
             <Settings className="w-5 h-5" />
-            {isOpen && <span className="font-medium font-primary">Settings</span>}
+            {isOpen && <span className="font-medium font-primary text-white">Settings</span>}
           </Link>
 
           {/* Logout */}
           <button
             className={cn(
               'w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200',
-              'text-red-400 hover:text-red-300 hover:bg-red-400/10'
+              'text-red-300 hover:text-red-200 hover:bg-red-400/10'
             )}
           >
             <LogOut className="w-5 h-5" />
-            {isOpen && <span className="font-medium font-primary">Logout</span>}
+            {isOpen && <span className="font-medium font-primary text-red-300">Logout</span>}
           </button>
         </div>
 
@@ -256,8 +253,8 @@ export function Sidebar({ isOpen = true, onToggle, className }: SidebarProps) {
                 JD
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-primary-100 truncate">John Doe</p>
-                <p className="text-xs text-primary-300 truncate">Rating: 1,847</p>
+                <p className="text-sm font-medium text-white truncate">John Doe</p>
+                <p className="text-xs text-white truncate">Rating: 1,847</p>
               </div>
             </div>
           </motion.div>

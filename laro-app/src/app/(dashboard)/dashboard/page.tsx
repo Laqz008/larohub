@@ -2,87 +2,66 @@
 
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { Plus, MapPin, Clock, Users, TrendingUp, Calendar } from 'lucide-react';
+import { Plus, MapPin, Calendar } from 'lucide-react';
 import { AuthenticatedHeader } from '@/components/layout/header';
 import { Sidebar, MobileSidebar } from '@/components/layout/sidebar';
 import { MobileBottomNav, MobileQuickAction } from '@/components/layout/mobile-nav';
 import { GameButton, QuickMatchButton, FindCourtsButton, CreateTeamButton, JoinGameButton } from '@/components/ui/game-button';
-import { StatCard, WinRateCard, GamesPlayedCard, RatingCard, StreakCard } from '@/components/ui/stat-card';
-import { DashboardSkeleton, GameCardSkeleton } from '@/components/ui/skeleton';
-import { EmptyGamesList } from '@/components/ui/empty-state';
-import { useToastHelpers } from '@/components/ui/toast';
+import { WinRateCard, GamesPlayedCard, RatingCard, StreakCard } from '@/components/ui/stat-card';
+import { DashboardSkeleton } from '@/components/ui/skeleton';
+import { PageErrorBoundary } from '@/components/error/error-boundary';
 import { cn } from '@/lib/utils';
+import { useCurrentUser, useGames } from '@/lib/hooks/use-api';
+import { useAuthStore } from '@/lib/stores/auth-store';
+import { useSocket } from '@/lib/realtime/socket';
+import { MockLogin } from '@/components/auth/mock-login';
 
-// Mock data for demonstration
-const mockUser = {
-  username: 'CourtKing23',
-  avatar: '',
-  rating: 1847
-};
-
-const mockRecentGames = [
-  {
-    id: '1',
-    opponent: 'Thunder Bolts',
-    result: 'win',
-    score: '78-65',
-    ratingChange: +25,
-    date: '2024-01-20',
-    mvp: true
-  },
-  {
-    id: '2',
-    opponent: 'Street Warriors',
-    result: 'loss',
-    score: '82-89',
-    ratingChange: -18,
-    date: '2024-01-18',
-    mvp: false
-  },
-  {
-    id: '3',
-    opponent: 'Hoop Dreams',
-    result: 'win',
-    score: '91-76',
-    ratingChange: +22,
-    date: '2024-01-15',
-    mvp: true
-  }
-];
-
-const mockUpcomingMatches = [
-  {
-    id: '1',
-    opponent: 'City Ballers',
-    date: 'Tomorrow',
-    time: '6:00 PM',
-    court: 'Downtown Basketball Court',
-    distance: '0.8 miles'
-  },
-  {
-    id: '2',
-    opponent: 'Slam Dunkers',
-    date: 'Friday',
-    time: '7:30 PM',
-    court: 'Riverside Park Court',
-    distance: '1.2 miles'
-  }
-];
-
-export default function DashboardPage() {
+function DashboardPageContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const toast = useToastHelpers();
 
-  // Simulate loading data
+  // Get current user data
+  const { data: currentUserResponse, isLoading: userLoading } = useCurrentUser();
+  const user = currentUserResponse?.data;
+
+  // Get recent games (user's game history)
+  const { data: recentGamesResponse, isLoading: gamesLoading } = useGames(
+    { status: 'completed' },
+    1,
+    5
+  );
+  const recentGames = recentGamesResponse?.data?.data || [];
+
+  // Get upcoming games
+  const { data: upcomingGamesResponse, isLoading: upcomingLoading } = useGames(
+    { status: 'open' },
+    1,
+    5
+  );
+  const upcomingGames = upcomingGamesResponse?.data?.data || [];
+
+  // Initialize auth and socket connection
+  const { initializeAuth, isAuthenticated } = useAuthStore();
+  const { connect: connectSocket } = useSocket();
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
+    // Initialize authentication on component mount
+    initializeAuth();
+  }, [initializeAuth]);
 
-    return () => clearTimeout(timer);
-  }, []);
+  useEffect(() => {
+    // Connect to socket when user is authenticated
+    if (user) {
+      connectSocket().catch(console.error);
+    }
+  }, [user, connectSocket]);
+
+  const isLoading = userLoading || gamesLoading || upcomingLoading;
+
+  // Show login screen if not authenticated
+  if (!isAuthenticated && !userLoading) {
+    return <MockLogin />;
+  }
 
   // Show loading skeleton while data is loading
   if (isLoading) {
@@ -93,11 +72,17 @@ export default function DashboardPage() {
             <Sidebar
               isOpen={sidebarOpen}
               onToggle={() => setSidebarOpen(!sidebarOpen)}
+              notifications={{
+                games: { count: 2, type: 'info', label: 'New game invitations' },
+                teams: { count: 1, type: 'warning', label: 'Team roster update needed' },
+                achievements: { count: 3, type: 'success', label: 'New achievements unlocked!' },
+                profile: { count: 1, type: 'urgent', label: 'Profile verification required' }
+              }}
             />
           </div>
           <div className="flex-1 min-w-0">
             <AuthenticatedHeader
-              user={mockUser}
+              user={user || { username: 'Loading...', avatar: '', rating: 0 }}
               onMenuToggle={() => setMobileSidebarOpen(true)}
             />
             <DashboardSkeleton />
@@ -122,6 +107,12 @@ export default function DashboardPage() {
           <Sidebar
             isOpen={sidebarOpen}
             onToggle={() => setSidebarOpen(!sidebarOpen)}
+            notifications={{
+              games: { count: 2, type: 'info', label: 'New game invitations' },
+              teams: { count: 1, type: 'warning', label: 'Team roster update needed' },
+              achievements: { count: 3, type: 'success', label: 'New achievements unlocked!' },
+              profile: { count: 1, type: 'urgent', label: 'Profile verification required' }
+            }}
           />
         </div>
 
@@ -129,7 +120,7 @@ export default function DashboardPage() {
         <div className="flex-1 min-w-0">
           {/* Header */}
           <AuthenticatedHeader
-            user={mockUser}
+            user={user || { username: 'Loading...', avatar: '', rating: 0 }}
             onMenuToggle={() => setMobileSidebarOpen(true)}
           />
 
@@ -143,7 +134,7 @@ export default function DashboardPage() {
               transition={{ duration: 0.6 }}
             >
               <h1 className="text-3xl lg:text-4xl font-display font-bold text-white mb-2">
-                Welcome back, <span className="text-primary-500">{mockUser.username}</span>! 🏀
+                Welcome back, <span className="text-primary-500">{user?.username || 'Player'}</span>! 🏀
               </h1>
               <p className="text-primary-200 text-lg">
                 Ready to dominate the court today?
@@ -169,7 +160,7 @@ export default function DashboardPage() {
                   <p className="text-primary-200 mb-4 text-sm">
                     Find a game near you in seconds
                   </p>
-                  <QuickMatchButton size="md" className="w-full" />
+                  <QuickMatchButton size="md" className="w-full">Quick Match</QuickMatchButton>
                 </div>
               </motion.div>
 
@@ -185,7 +176,7 @@ export default function DashboardPage() {
                   <p className="text-primary-200 mb-4 text-sm">
                     Discover courts with real-time availability
                   </p>
-                  <FindCourtsButton size="md" className="w-full" />
+                  <FindCourtsButton size="md" className="w-full">Find Courts</FindCourtsButton>
                 </div>
               </motion.div>
 
@@ -201,7 +192,7 @@ export default function DashboardPage() {
                   <p className="text-primary-200 mb-4 text-sm">
                     Build your championship squad
                   </p>
-                  <CreateTeamButton size="md" className="w-full" />
+                  <CreateTeamButton size="md" className="w-full">Create Team</CreateTeamButton>
                 </div>
               </motion.div>
             </motion.div>
@@ -248,7 +239,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="space-y-4">
-                  {mockRecentGames.map((game, index) => (
+                  {recentGames.length > 0 ? recentGames.map((game, index) => (
                     <motion.div
                       key={game.id}
                       className="flex items-center justify-between p-4 bg-dark-200/50 rounded-lg border border-primary-400/10"
@@ -259,30 +250,32 @@ export default function DashboardPage() {
                       <div className="flex items-center space-x-4">
                         <div className={cn(
                           "w-3 h-3 rounded-full",
-                          game.result === 'win' ? 'bg-court-500' : 'bg-red-500'
+                          game.winnerTeamId ? 'bg-court-500' : 'bg-red-500'
                         )} />
                         <div>
                           <p className="font-medium text-primary-100">
-                            vs {game.opponent}
+                            vs {game.opponentTeam?.name || 'Unknown Team'}
                           </p>
                           <p className="text-sm text-primary-300">
-                            {game.score} • {game.date}
+                            {game.hostScore || 0}-{game.opponentScore || 0} • {new Date(game.scheduledTime).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className={cn(
                           "font-bold font-accent",
-                          game.ratingChange > 0 ? 'text-court-500' : 'text-red-400'
+                          game.winnerTeamId ? 'text-court-500' : 'text-red-400'
                         )}>
-                          {game.ratingChange > 0 ? '+' : ''}{game.ratingChange}
+                          {game.winnerTeamId ? 'W' : 'L'}
                         </p>
-                        {game.mvp && (
-                          <p className="text-xs text-yellow-400">⭐ MVP</p>
-                        )}
                       </div>
                     </motion.div>
-                  ))}
+                  )) : (
+                    <div className="text-center py-8">
+                      <div className="text-4xl mb-4">🏀</div>
+                      <p className="text-primary-300">No recent games</p>
+                    </div>
+                  )}
                 </div>
               </motion.div>
 
@@ -302,9 +295,9 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="space-y-4">
-                  {mockUpcomingMatches.map((match, index) => (
+                  {upcomingGames.length > 0 ? upcomingGames.map((game, index) => (
                     <motion.div
-                      key={match.id}
+                      key={game.id}
                       className="p-4 bg-dark-200/50 rounded-lg border border-primary-400/10"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -313,33 +306,30 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <p className="font-medium text-primary-100">
-                            vs {match.opponent}
+                            vs {game.opponentTeam?.name || 'Open Game'}
                           </p>
                           <div className="flex items-center space-x-4 text-sm text-primary-300 mt-1">
                             <span className="flex items-center">
                               <Calendar className="w-4 h-4 mr-1" />
-                              {match.date} {match.time}
+                              {new Date(game.scheduledTime).toLocaleDateString()} {new Date(game.scheduledTime).toLocaleTimeString()}
                             </span>
                           </div>
                         </div>
-                        <JoinGameButton />
+                        <JoinGameButton>Join</JoinGameButton>
                       </div>
                       <div className="flex items-center space-x-4 text-sm text-primary-300">
                         <span className="flex items-center">
                           <MapPin className="w-4 h-4 mr-1" />
-                          {match.court}
+                          {game.court?.name || 'Court TBD'}
                         </span>
-                        <span className="text-court-400">{match.distance}</span>
+                        <span className="text-court-400">{game.gameType}</span>
                       </div>
                     </motion.div>
-                  ))}
-
-                  {/* No upcoming matches state */}
-                  {mockUpcomingMatches.length === 0 && (
+                  )) : (
                     <div className="text-center py-8">
                       <div className="text-4xl mb-4">🏀</div>
                       <p className="text-primary-300 mb-4">No upcoming matches</p>
-                      <QuickMatchButton size="sm" />
+                      <QuickMatchButton size="sm">Find Game</QuickMatchButton>
                     </div>
                   )}
                 </div>
@@ -352,13 +342,23 @@ export default function DashboardPage() {
       {/* Mobile Navigation */}
       <MobileBottomNav
         notifications={{
-          games: 2,
-          teams: 1
+          games: { count: 2, type: 'info', label: 'New game invitations' },
+          teams: { count: 1, type: 'warning', label: 'Team roster update needed' },
+          achievements: { count: 3, type: 'success', label: 'New achievements unlocked!' },
+          profile: { count: 1, type: 'urgent', label: 'Profile verification required' }
         }}
       />
 
       {/* Mobile Quick Action Button */}
       <MobileQuickAction />
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <PageErrorBoundary>
+      <DashboardPageContent />
+    </PageErrorBoundary>
   );
 }

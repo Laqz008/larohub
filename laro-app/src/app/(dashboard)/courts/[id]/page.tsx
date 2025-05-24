@@ -3,14 +3,14 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { 
+import {
   ArrowLeft,
-  MapPin, 
-  Star, 
-  Car, 
-  Lightbulb, 
-  Users, 
-  Clock, 
+  MapPin,
+  Star,
+  Car,
+  Lightbulb,
+  Users,
+  Clock,
   Camera,
   Navigation,
   Phone,
@@ -91,7 +91,7 @@ const mockReviews = [
 export default function CourtDetailPage() {
   const params = useParams();
   const courtId = params.id as string;
-  
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'photos' | 'reviews' | 'schedule'>('overview');
@@ -135,24 +135,24 @@ export default function CourtDetailPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
       {/* Mobile Sidebar */}
-      <MobileSidebar 
-        isOpen={mobileSidebarOpen} 
-        onClose={() => setMobileSidebarOpen(false)} 
+      <MobileSidebar
+        isOpen={mobileSidebarOpen}
+        onClose={() => setMobileSidebarOpen(false)}
       />
 
       <div className="flex">
         {/* Desktop Sidebar */}
         <div className="hidden lg:block">
-          <Sidebar 
-            isOpen={sidebarOpen} 
-            onToggle={() => setSidebarOpen(!sidebarOpen)} 
+          <Sidebar
+            isOpen={sidebarOpen}
+            onToggle={() => setSidebarOpen(!sidebarOpen)}
           />
         </div>
 
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <AuthenticatedHeader 
+          <AuthenticatedHeader
             user={mockUser}
             onMenuToggle={() => setMobileSidebarOpen(true)}
           />
@@ -316,7 +316,7 @@ export default function CourtDetailPage() {
                     />
                     <StatCard
                       title="Surface"
-                      value={mockCourt.surfaceType}
+                      value={mockCourt.surfaceType || 'Unknown'}
                       icon={<MapPin className="w-6 h-6" />}
                       glowColor="primary"
                     />
@@ -331,7 +331,7 @@ export default function CourtDetailPage() {
                   {/* Amenities */}
                   <div className="bg-gradient-to-br from-dark-300/80 to-dark-400/80 backdrop-blur-sm rounded-xl p-6 border border-primary-400/20">
                     <h3 className="text-xl font-display font-bold text-white mb-6">Amenities & Features</h3>
-                    
+
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                       <div className={cn(
                         'flex items-center space-x-3 p-4 rounded-lg',
@@ -340,7 +340,7 @@ export default function CourtDetailPage() {
                         <Lightbulb className="w-6 h-6" />
                         <span className="font-medium">Lighting</span>
                       </div>
-                      
+
                       <div className={cn(
                         'flex items-center space-x-3 p-4 rounded-lg',
                         mockCourt.hasParking ? 'bg-blue-500/20 text-blue-400' : 'bg-dark-200/50 text-gray-400'
@@ -418,7 +418,7 @@ export default function CourtDetailPage() {
                         Write Review
                       </GameButton>
                     </div>
-                    
+
                     <div className="flex items-center space-x-6">
                       <div className="text-center">
                         <div className="text-3xl font-bold text-primary-100 font-accent">{mockCourt.rating}</div>
@@ -427,14 +427,14 @@ export default function CourtDetailPage() {
                         </div>
                         <div className="text-sm text-primary-300">{mockCourt.reviewCount} reviews</div>
                       </div>
-                      
+
                       <div className="flex-1 space-y-2">
                         {[5, 4, 3, 2, 1].map(stars => (
                           <div key={stars} className="flex items-center space-x-2">
                             <span className="text-sm text-primary-300 w-8">{stars}★</span>
                             <div className="flex-1 bg-dark-200 rounded-full h-2">
-                              <div 
-                                className="bg-yellow-400 h-2 rounded-full" 
+                              <div
+                                className="bg-yellow-400 h-2 rounded-full"
                                 style={{ width: `${stars === 5 ? 60 : stars === 4 ? 30 : 10}%` }}
                               />
                             </div>
@@ -463,9 +463,9 @@ export default function CourtDetailPage() {
                             </div>
                           </div>
                         </div>
-                        
+
                         <p className="text-primary-200 mb-3">{review.comment}</p>
-                        
+
                         <div className="flex items-center space-x-4 text-sm text-primary-300">
                           <button className="hover:text-primary-200 transition-colors">
                             👍 Helpful ({review.helpful})
@@ -500,12 +500,12 @@ export default function CourtDetailPage() {
       </div>
 
       {/* Mobile Navigation */}
-      <MobileBottomNav 
+      <MobileBottomNav
         notifications={{
           courts: 2
         }}
       />
-      
+
       {/* Mobile Quick Action Button */}
       <MobileQuickAction />
     </div>

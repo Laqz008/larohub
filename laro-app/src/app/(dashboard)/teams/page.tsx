@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Users, Trophy, Star, MapPin } from 'lucide-react';
 import { AuthenticatedHeader } from '@/components/layout/header';
 import { Sidebar, MobileSidebar } from '@/components/layout/sidebar';
@@ -39,6 +39,7 @@ const mockTeams: TeamWithMembers[] = [
       email: 'thunder@example.com',
       skillLevel: 8,
       rating: 1950,
+      maxDistance: 25,
       isVerified: true,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -59,6 +60,7 @@ const mockTeams: TeamWithMembers[] = [
           skillLevel: 8,
           rating: 1950,
           position: 'PG',
+          maxDistance: 25,
           isVerified: true,
           createdAt: new Date(),
           updatedAt: new Date()
@@ -88,6 +90,7 @@ const mockTeams: TeamWithMembers[] = [
       email: 'warrior@example.com',
       skillLevel: 6,
       rating: 1700,
+      maxDistance: 20,
       isVerified: true,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -115,6 +118,7 @@ const mockTeams: TeamWithMembers[] = [
       email: 'elite@example.com',
       skillLevel: 10,
       rating: 2200,
+      maxDistance: 30,
       isVerified: true,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -136,8 +140,53 @@ export default function TeamsPage() {
     maxDistance: undefined
   });
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [teams, setTeams] = useState<TeamWithMembers[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredTeams = mockTeams.filter(team => {
+  // Load teams data (mock data for development)
+  useEffect(() => {
+    const loadTeams = async () => {
+      try {
+        setLoading(true);
+
+        // Use mock data for development
+        // TODO: Replace with real API call when backend is ready
+        if (process.env.NODE_ENV === 'development') {
+          // Simulate API delay for realistic UX
+          await new Promise(resolve => setTimeout(resolve, 800));
+          setTeams(mockTeams);
+          setError(null);
+        } else {
+          // Production API call
+          const response = await fetch('/api/teams', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch teams');
+          }
+
+          const result = await response.json();
+          setTeams(result.data.teams || []);
+          setError(null);
+        }
+      } catch (err) {
+        console.error('Error loading teams:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load teams');
+        // Fallback to mock data if API fails
+        setTeams(mockTeams);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTeams();
+  }, []);
+
+  const filteredTeams = teams.filter(team => {
     // Search filter
     if (searchQuery && !team.name.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
@@ -156,9 +205,51 @@ export default function TeamsPage() {
     return true;
   });
 
-  const handleJoinTeam = (teamId: string) => {
-    console.log('Joining team:', teamId);
-    // Implement join team logic
+  const handleJoinTeam = async (teamId: string) => {
+    try {
+      if (process.env.NODE_ENV === 'development') {
+        // Mock join team behavior for development
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Update teams list to show updated membership
+        const updatedTeams = teams.map(team =>
+          team.id === teamId
+            ? { ...team, memberCount: team.memberCount + 1 }
+            : team
+        );
+        setTeams(updatedTeams);
+
+        alert('Successfully joined team! (Mock behavior)');
+      } else {
+        // Production API call
+        const response = await fetch(`/api/teams/${teamId}/join`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || 'Failed to join team');
+        }
+
+        // Refresh teams list to show updated membership
+        const updatedTeams = teams.map(team =>
+          team.id === teamId
+            ? { ...team, memberCount: team.memberCount + 1 }
+            : team
+        );
+        setTeams(updatedTeams);
+
+        alert(result.message || 'Successfully joined team!');
+      }
+    } catch (error) {
+      console.error('Error joining team:', error);
+      alert(error instanceof Error ? error.message : 'Failed to join team');
+    }
   };
 
   const handleCreateTeam = () => {
@@ -377,34 +468,72 @@ export default function TeamsPage() {
               </div>
             </motion.div>
 
-            {/* Teams Grid/List */}
-            <motion.div
-              className={cn(
-                viewMode === 'grid'
-                  ? 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6'
-                  : 'space-y-4'
-              )}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-            >
-              {filteredTeams.map((team, index) => (
-                <motion.div
-                  key={team.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 * index }}
+            {/* Loading State */}
+            {loading && (
+              <motion.div
+                className="text-center py-16"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-primary-300">Loading teams...</p>
+              </motion.div>
+            )}
+
+            {/* Error State */}
+            {error && !loading && (
+              <motion.div
+                className="text-center py-16"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-red-400 text-2xl">⚠️</span>
+                </div>
+                <h3 className="text-xl font-display font-bold text-white mb-2">
+                  Error Loading Teams
+                </h3>
+                <p className="text-primary-300 mb-6">{error}</p>
+                <GameButton
+                  variant="primary"
+                  size="md"
+                  onClick={() => window.location.reload()}
                 >
-                  <TeamCard
-                    team={team}
-                    variant={viewMode === 'grid' ? 'detailed' : 'compact'}
-                    interactive
-                    userRole="none"
-                    onJoin={() => handleJoinTeam(team.id)}
-                  />
-                </motion.div>
-              ))}
-            </motion.div>
+                  Try Again
+                </GameButton>
+              </motion.div>
+            )}
+
+            {/* Teams Grid/List */}
+            {!loading && !error && (
+              <motion.div
+                className={cn(
+                  viewMode === 'grid'
+                    ? 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6'
+                    : 'space-y-4'
+                )}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+              >
+                {filteredTeams.map((team, index) => (
+                  <motion.div
+                    key={team.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 * index }}
+                  >
+                    <TeamCard
+                      team={team}
+                      variant={viewMode === 'grid' ? 'detailed' : 'compact'}
+                      interactive
+                      userRole="none"
+                      onJoin={() => handleJoinTeam(team.id)}
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
 
             {/* Empty State */}
             {filteredTeams.length === 0 && (
