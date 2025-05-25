@@ -35,7 +35,7 @@ function DashboardPageContent() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showPlayerStats, setShowPlayerStats] = useState(false);
   const [showCourtMap, setShowCourtMap] = useState(false);
-  const [socketError, setSocketError] = useState<string | null>(null);
+  // Removed unused socketError state
   const toast = useToastHelpers();
 
   // Track lazy loading performance
@@ -73,14 +73,16 @@ function DashboardPageContent() {
   const upcomingGames = upcomingGamesResponse?.data?.data || [];
 
   // Initialize auth and socket connection
-  const { initializeAuth, isAuthenticated } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const { connect: connectSocket, isConnected: socketConnected, isConnecting: socketConnecting, connectionError } = useSocket();
 
-  // Handle socket connection errors
+  // Handle socket connection errors gracefully
   useEffect(() => {
     if (connectionError) {
-      setSocketError(connectionError);
-      toast.error('Real-time features temporarily unavailable', connectionError);
+      // Only show error once and don't spam the user
+      console.warn('🏀 LaroHub: Real-time features temporarily unavailable:', connectionError);
+      // Optionally show a less intrusive notification
+      // toast.info('Real-time features temporarily unavailable');
     }
   }, [connectionError, toast]);
 
@@ -97,24 +99,27 @@ function DashboardPageContent() {
     }
   }, [userError, gamesError, upcomingError, toast]);
 
-  useEffect(() => {
-    // Initialize authentication on component mount
-    initializeAuth();
-  }, [initializeAuth]);
+  // Remove auth initialization - handled by AuthProvider
 
   useEffect(() => {
-    // Connect to socket when user is authenticated
+    // Connect to socket when user is authenticated (optional feature)
     if (user && !socketConnected && !socketConnecting) {
-      connectSocket().catch((error) => {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to connect to real-time server';
-        console.warn('🏀 LaroHub: Socket connection failed:', errorMessage);
-        setSocketError(errorMessage);
-      });
+      // Only attempt connection if WebSocket server is expected to be available
+      const shouldAttemptConnection = process.env.NODE_ENV === 'production' ||
+                                     process.env.NEXT_PUBLIC_ENABLE_WEBSOCKET === 'true';
+
+      if (shouldAttemptConnection) {
+        connectSocket().catch((error) => {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to connect to real-time server';
+          console.warn('🏀 LaroHub: Socket connection failed (this is expected in development):', errorMessage);
+          // Socket error handled by connectionError state
+        });
+      }
     }
   }, [user, connectSocket, socketConnected, socketConnecting]);
 
   const isLoading = userLoading || gamesLoading || upcomingLoading;
-  const hasError = userError || gamesError || upcomingError;
+  // Error handling is done in useEffect above
 
   // Show login screen if not authenticated
   if (!isAuthenticated && !userLoading) {

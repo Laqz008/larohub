@@ -8,14 +8,31 @@ import { useToastHelpers } from '@/components/ui/toast';
 
 export function MockLogin() {
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuthStore();
   const toast = useToastHelpers();
 
   const handleMockLogin = async () => {
     setIsLoading(true);
     try {
-      await login('courtking@example.com', 'password123');
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: 'courtking@example.com',
+          password: 'password123',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Login failed');
+      }
+
       toast.success('Logged in successfully!');
+      // Redirect to dashboard
+      window.location.href = '/dashboard';
     } catch (error: any) {
       toast.error(error.message || 'Login failed');
     } finally {

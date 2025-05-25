@@ -1,12 +1,57 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowRight, Users, MapPin, Calendar, Trophy } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { GameButton, QuickMatchButton, FindCourtsButton, CreateTeamButton } from '@/components/ui/game-button';
 import { StatCard } from '@/components/ui/stat-card';
+import { WelcomeSection } from '@/components/auth/welcome-section';
+import { useAuthStore } from '@/lib/stores/auth-store';
 
 export default function Home() {
+  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  // Always call the hook unconditionally to avoid useSyncExternalStore errors
+  const { isAuthenticated, isLoading } = useAuthStore();
+
+  // Handle client-side mounting
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Redirect authenticated users to dashboard (only after mounting)
+  useEffect(() => {
+    if (mounted && !isLoading && isAuthenticated) {
+      router.push('/dashboard');
+    }
+  }, [mounted, isAuthenticated, isLoading, router]);
+
+  // Show loading state during initial mount or auth check
+  if (!mounted || (mounted && isLoading)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900 flex items-center justify-center">
+        <motion.div
+          className="text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center basketball-glow mx-auto mb-4">
+            <span className="text-white font-bold text-2xl">🏀</span>
+          </div>
+          <p className="text-primary-200">Loading LARO...</p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Don't render main content if authenticated (will redirect)
+  if (mounted && isAuthenticated && !isLoading) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
       {/* Header */}
@@ -287,44 +332,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 relative" aria-label="Call to action">
+      {/* Welcome/CTA Section for unauthenticated users */}
+      <div className="relative">
         <div className="absolute inset-0 bg-gradient-to-r from-primary-600/20 to-court-600/20" aria-hidden="true" />
-        <div className="relative max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-white mb-6">
-              Ready to Take Your Game to the Next Level?
-            </h2>
-            <p className="text-lg text-primary-200 mb-8">
-              Join thousands of basketball players already using LARO to find games, build teams, and improve their skills.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center" role="group" aria-label="Sign up actions">
-              <GameButton
-                variant="primary"
-                size="lg"
-                glow
-                icon={<ArrowRight className="w-5 h-5" />}
-                iconPosition="right"
-                onClick={() => window.location.href = '/register'}
-              >
-                Get Started Free
-              </GameButton>
-              <GameButton
-                variant="secondary"
-                size="lg"
-                onClick={() => window.location.href = '/about'}
-              >
-                Learn More
-              </GameButton>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+        <WelcomeSection />
+      </div>
 
       {/* Footer */}
       <footer className="bg-dark-400 border-t border-primary-400/20 py-12" role="contentinfo">

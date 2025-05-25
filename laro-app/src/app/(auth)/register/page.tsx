@@ -1,23 +1,32 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Mail, Lock, User, MapPin, ArrowRight, Star } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { GameButton } from '@/components/ui/game-button';
 import { cn } from '@/lib/utils';
-import { useRegister } from '@/lib/hooks/use-api';
-import { POSITIONS, SKILL_LEVELS, Position, RegisterFormData } from '@/types';
+import { useAuthStore } from '@/lib/stores/auth-store';
+import { useToast } from '@/components/ui/toast';
+import { POSITIONS, SKILL_LEVELS, Position } from '@/types';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { isAuthenticated, isLoading, register } = useAuthStore();
+  const { toast } = useToast();
+
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
     confirmPassword: '',
+    firstName: '',
+    lastName: '',
+    dateOfBirth: '',
+    agreeToTerms: false,
     position: '',
     skillLevel: 5,
     city: ''
@@ -25,24 +34,15 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const registerMutation = useRegister({
-    onSuccess: (data) => {
-      console.log('Registration successful:', data);
-      // Store token in localStorage
-      if (data.data?.tokens?.accessToken) {
-        localStorage.setItem('auth-token', data.data.tokens.accessToken);
-      }
-      // Redirect to dashboard
-      router.push('/dashboard');
-    },
-    onError: (error: any) => {
-      console.error('Registration failed:', error);
-      setErrors({
-        general: error.response?.data?.message || 'Registration failed. Please try again.'
-      });
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      const returnUrl = searchParams.get('returnUrl') || '/dashboard';
+      router.push(returnUrl);
     }
-  });
+  }, [isAuthenticated, isLoading, router, searchParams]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -63,30 +63,45 @@ export default function RegisterPage() {
   const validateStep1 = () => {
     const newErrors: Record<string, string> = {};
 
+    if (!formData.firstName) {
+      newErrors.firstName = 'First name is required';
+    }
+    if (!formData.lastName) {
+      newErrors.lastName = 'Last name is required';
+    }
+    if (!formData.dateOfBirth) {
+      newErrors.dateOfBirth = 'Date of birth is required';
+    } else {
+      const birthDate = new Date(formData.dateOfBirth);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      if (age < 13) {
+        newErrors.dateOfBirth = 'You must be at least 13 years old';
+      }
+    }
+    if (!formData.agreeToTerms) {
+      newErrors.agreeToTerms = 'You must agree to the terms and conditions';
+    }
     if (!formData.username) {
       newErrors.username = 'Username is required';
     } else if (formData.username.length < 3) {
       newErrors.username = 'Username must be at least 3 characters';
     }
-
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email';
     }
-
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
     }
-
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password';
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -120,17 +135,36 @@ export default function RegisterPage() {
     setErrors({});
 
     // Prepare data for API
-    const registrationData: RegisterFormData = {
+    const registrationData = {
       username: formData.username,
       email: formData.email,
       password: formData.password,
+      confirmPassword: formData.confirmPassword,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      dateOfBirth: formData.dateOfBirth,
+      agreeToTerms: formData.agreeToTerms,
       position: formData.position as Position | undefined,
       skillLevel: formData.skillLevel,
       city: formData.city || undefined
     };
 
-    // Call the registration API
-    registerMutation.mutate(registrationData);
+    // Call the registration API directly
+    setIsSubmitting(true);
+    try {
+      await register(registrationData);
+      toast({ title: 'Account created successfully! Please complete your profile.' });
+      // Redirect to profile setup
+      router.push('/profile/setup');
+    } catch (error: any) {
+      console.error('Registration failed:', error);
+      setErrors({
+        general: error.message || 'Registration failed. Please try again.'
+      });
+      toast({ title: error.message || 'Registration failed', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -232,6 +266,115 @@ export default function RegisterPage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
               >
+                {/* First Name Field */}
+                <div>
+                  <label htmlFor="firstName" className="block text-sm font-medium text-primary-200 mb-2">
+                    First Name
+                  </label>
+                  <input
+                    id="firstName"
+                    name="firstName"
+                    type="text"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    className={cn(
+                      "block w-full py-3 px-3 border rounded-lg bg-dark-200/50 text-primary-100 placeholder-primary-300",
+                      "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent",
+                      "transition-all duration-200",
+                      errors.firstName ? "border-red-500/50" : "border-primary-400/30"
+                    )}
+                    placeholder="Enter your first name"
+                  />
+                  {errors.firstName && (
+                    <motion.p
+                      className="mt-1 text-sm text-red-400"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      {errors.firstName}
+                    </motion.p>
+                  )}
+                </div>
+                {/* Last Name Field */}
+                <div>
+                  <label htmlFor="lastName" className="block text-sm font-medium text-primary-200 mb-2">
+                    Last Name
+                  </label>
+                  <input
+                    id="lastName"
+                    name="lastName"
+                    type="text"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    className={cn(
+                      "block w-full py-3 px-3 border rounded-lg bg-dark-200/50 text-primary-100 placeholder-primary-300",
+                      "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent",
+                      "transition-all duration-200",
+                      errors.lastName ? "border-red-500/50" : "border-primary-400/30"
+                    )}
+                    placeholder="Enter your last name"
+                  />
+                  {errors.lastName && (
+                    <motion.p
+                      className="mt-1 text-sm text-red-400"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      {errors.lastName}
+                    </motion.p>
+                  )}
+                </div>
+                {/* Date of Birth Field */}
+                <div>
+                  <label htmlFor="dateOfBirth" className="block text-sm font-medium text-primary-200 mb-2">
+                    Date of Birth
+                  </label>
+                  <input
+                    id="dateOfBirth"
+                    name="dateOfBirth"
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={handleInputChange}
+                    className={cn(
+                      "block w-full py-3 px-3 border rounded-lg bg-dark-200/50 text-primary-100 placeholder-primary-300",
+                      "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent",
+                      "transition-all duration-200",
+                      errors.dateOfBirth ? "border-red-500/50" : "border-primary-400/30"
+                    )}
+                  />
+                  {errors.dateOfBirth && (
+                    <motion.p
+                      className="mt-1 text-sm text-red-400"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      {errors.dateOfBirth}
+                    </motion.p>
+                  )}
+                </div>
+                {/* Agree to Terms Checkbox */}
+                <div>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      name="agreeToTerms"
+                      checked={formData.agreeToTerms}
+                      onChange={e => setFormData(prev => ({ ...prev, agreeToTerms: e.target.checked }))}
+                      className="rounded border-primary-400/30 bg-dark-200/50 text-primary-500 focus:ring-primary-500 focus:ring-offset-0 mr-2"
+                    />
+                    <span className="text-sm text-primary-200">I agree to the <a href="/terms" className="underline text-primary-400" target="_blank" rel="noopener noreferrer">terms and conditions</a></span>
+                  </label>
+                  {errors.agreeToTerms && (
+                    <motion.p
+                      className="mt-1 text-sm text-red-400"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      {errors.agreeToTerms}
+                    </motion.p>
+                  )}
+                </div>
+
                 {/* Username Field */}
                 <div>
                   <label htmlFor="username" className="block text-sm font-medium text-primary-200 mb-2">
@@ -528,11 +671,11 @@ export default function RegisterPage() {
                     size="lg"
                     className="flex-1"
                     glow
-                    loading={registerMutation.isPending}
+                    loading={isSubmitting}
                     icon={<ArrowRight className="w-5 h-5" />}
                     iconPosition="right"
                   >
-                    {registerMutation.isPending ? 'Creating Account...' : 'Create Account'}
+                    {isSubmitting ? 'Creating Account...' : 'Create Account'}
                   </GameButton>
                 </div>
               </motion.div>

@@ -2,20 +2,21 @@
 
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { 
-  User, 
-  Edit3, 
-  Camera, 
-  Trophy, 
-  Calendar, 
-  Star, 
+import {
+  User,
+  Edit3,
+  Camera,
+  Trophy,
+  Calendar,
+  Star,
   Target,
   TrendingUp,
   Award,
   MapPin,
   Settings,
   Save,
-  X
+  X,
+  UserPlus
 } from 'lucide-react';
 import { AuthenticatedHeader } from '@/components/layout/header';
 import { Sidebar, MobileSidebar } from '@/components/layout/sidebar';
@@ -23,23 +24,48 @@ import { MobileBottomNav, MobileQuickAction } from '@/components/layout/mobile-n
 import { PageErrorBoundary } from '@/components/error/error-boundary';
 import { GameButton } from '@/components/ui/game-button';
 import { StatCard } from '@/components/ui/stat-card';
+import { BasketballProfileForm } from '@/components/forms/basketball-profile-form';
 import { cn } from '@/lib/utils';
 import type { User as UserType, Position } from '@/types';
+import { useCurrentUser } from '@/lib/hooks/use-api';
+import { BasketballProfileFormData } from '@/lib/validation';
+import { useToast } from '@/components/ui/toast';
+import { useUpdateBasketballProfile, transformUserToBasketballProfile } from '@/lib/hooks/use-basketball-profile';
 
-// Mock user data for development
-const mockUser: UserType = {
-  id: 'user1',
-  username: 'ThunderCap',
-  email: 'thunder@example.com',
-  avatar: '',
-  position: 'PG',
-  skillLevel: 8,
-  rating: 1847,
-  city: 'Los Angeles',
-  maxDistance: 25,
-  isVerified: true,
-  createdAt: new Date('2023-06-15'),
-  updatedAt: new Date()
+// Utility function to safely format dates - completely bulletproof
+const formatDate = (date: any, fallback: string = 'Recently'): string => {
+  try {
+    // Handle null, undefined, empty string, or invalid values
+    if (!date || date === 'null' || date === 'undefined' || date === '') {
+      return fallback;
+    }
+
+    // Handle string dates that might be invalid
+    if (typeof date === 'string' && (date === 'Invalid Date' || date.length < 4)) {
+      return fallback;
+    }
+
+    // Try to create a Date object
+    const dateObj = new Date(date);
+
+    // Check if the date is valid
+    if (isNaN(dateObj.getTime()) || dateObj.getTime() === 0) {
+      return fallback;
+    }
+
+    // Additional check for reasonable date range (not too far in past/future)
+    const now = new Date();
+    const yearDiff = Math.abs(now.getFullYear() - dateObj.getFullYear());
+    if (yearDiff > 100) {
+      return fallback;
+    }
+
+    // Finally, try to format the date
+    return dateObj.toLocaleDateString();
+  } catch (error) {
+    console.warn('Date formatting error:', error, 'for date:', date);
+    return fallback;
+  }
 };
 
 // Mock achievements data
@@ -102,24 +128,67 @@ function ProfilePageContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editedUser, setEditedUser] = useState(mockUser);
+  const [showBasketballForm, setShowBasketballForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  const updateBasketballProfile = useUpdateBasketballProfile();
+
+  // Fetch current user data
+  const { data: currentUserResponse, isLoading } = useCurrentUser();
+  const user = currentUserResponse?.data || {
+    id: '',
+    username: 'Loading...',
+    email: '',
+    avatar: '',
+    position: 'PG' as const,
+    skillLevel: 0,
+    rating: 0,
+    city: '',
+    maxDistance: 0,
+    isVerified: false,
+    createdAt: null,
+    updatedAt: null
+  };
+
+  // Ensure user object has safe date values
+  const safeUser = {
+    ...user,
+    createdAt: user.createdAt || new Date(),
+    updatedAt: user.updatedAt || new Date()
+  };
+
+  const [editedUser, setEditedUser] = useState(safeUser);
 
   const handleSaveProfile = () => {
     // In real app, this would call an API
     console.log('Saving profile:', editedUser);
     setIsEditing(false);
-    // Show success message
+    toast.success('Profile updated successfully!');
   };
 
   const handleCancelEdit = () => {
-    setEditedUser(mockUser);
+    setEditedUser(safeUser);
     setIsEditing(false);
+  };
+
+  const handleBasketballProfileSubmit = async (data: BasketballProfileFormData) => {
+    try {
+      await updateBasketballProfile.mutateAsync(data);
+      toast.success('Basketball profile updated successfully!');
+      setShowBasketballForm(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update basketball profile');
+    }
+  };
+
+  const handleBasketballFormCancel = () => {
+    setShowBasketballForm(false);
   };
 
   const getPositionName = (position: Position) => {
     const positions = {
       PG: 'Point Guard',
-      SG: 'Shooting Guard', 
+      SG: 'Shooting Guard',
       SF: 'Small Forward',
       PF: 'Power Forward',
       C: 'Center'
@@ -139,30 +208,67 @@ function ProfilePageContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
       {/* Mobile Sidebar */}
-      <MobileSidebar 
-        isOpen={mobileSidebarOpen} 
-        onClose={() => setMobileSidebarOpen(false)} 
+      <MobileSidebar
+        isOpen={mobileSidebarOpen}
+        onClose={() => setMobileSidebarOpen(false)}
       />
 
       <div className="flex">
         {/* Desktop Sidebar */}
         <div className="hidden lg:block">
-          <Sidebar 
-            isOpen={sidebarOpen} 
-            onToggle={() => setSidebarOpen(!sidebarOpen)} 
+          <Sidebar
+            isOpen={sidebarOpen}
+            onToggle={() => setSidebarOpen(!sidebarOpen)}
           />
         </div>
 
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <AuthenticatedHeader 
-            user={mockUser}
+          <AuthenticatedHeader
+            user={safeUser}
             onMenuToggle={() => setMobileSidebarOpen(true)}
           />
 
           {/* Page Content */}
           <main className="p-4 lg:p-8">
+            {/* Basketball Profile Form Modal */}
+            {showBasketballForm && (
+              <motion.div
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <motion.div
+                  className="bg-gradient-to-br from-dark-800 to-dark-900 rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                >
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-2xl font-display font-bold text-white">
+                        Complete Your Basketball Profile
+                      </h2>
+                      <button
+                        onClick={handleBasketballFormCancel}
+                        className="text-primary-300 hover:text-white transition-colors"
+                      >
+                        <X className="w-6 h-6" />
+                      </button>
+                    </div>
+
+                    <BasketballProfileForm
+                      initialData={transformUserToBasketballProfile(safeUser)}
+                      onSubmit={handleBasketballProfileSubmit}
+                      onCancel={handleBasketballFormCancel}
+                      isLoading={updateBasketballProfile.isPending}
+                    />
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
             {/* Profile Header */}
             <motion.div
               className="bg-gradient-to-r from-dark-300/80 to-dark-400/80 backdrop-blur-sm rounded-xl p-6 border border-primary-400/20 mb-8"
@@ -175,10 +281,10 @@ function ProfilePageContent() {
                   {/* Avatar */}
                   <div className="relative">
                     <div className="w-24 h-24 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white text-3xl font-bold basketball-glow">
-                      {mockUser.avatar ? (
-                        <img src={mockUser.avatar} alt={mockUser.username} className="w-full h-full rounded-full object-cover" />
+                      {safeUser.avatar ? (
+                        <img src={safeUser.avatar} alt={safeUser.username} className="w-full h-full rounded-full object-cover" />
                       ) : (
-                        (mockUser.username || 'U').charAt(0).toUpperCase()
+                        (safeUser.username || 'U').charAt(0).toUpperCase()
                       )}
                     </div>
                     {isEditing && (
@@ -208,34 +314,41 @@ function ProfilePageContent() {
                     ) : (
                       <>
                         <h1 className="text-3xl font-display font-bold text-white flex items-center">
-                          {mockUser.username}
-                          {mockUser.isVerified && (
+                          {safeUser.username}
+                          {safeUser.isVerified && (
                             <span className="ml-3 text-blue-400">✓</span>
                           )}
                         </h1>
-                        <p className="text-primary-300 text-lg">{mockUser.email}</p>
+                        <p className="text-primary-300 text-lg">{safeUser.email}</p>
                       </>
                     )}
-                    
+
                     <div className="flex items-center space-x-4 text-primary-200 mt-2">
                       <span className="flex items-center">
                         <User className="w-4 h-4 mr-1" />
-                        {getPositionName(mockUser.position)}
+                        {safeUser.position ? getPositionName(safeUser.position) : 'Position not set'}
                       </span>
                       <span className="flex items-center">
                         <MapPin className="w-4 h-4 mr-1" />
-                        {mockUser.city}
+                        {safeUser.city || 'Location not set'}
                       </span>
                       <span className="flex items-center">
                         <Calendar className="w-4 h-4 mr-1" />
-                        Joined {mockUser.createdAt.toLocaleDateString()}
+                        Joined {(() => {
+                          try {
+                            return formatDate(safeUser.createdAt);
+                          } catch (error) {
+                            console.warn('Error formatting join date:', error);
+                            return 'Recently';
+                          }
+                        })()}
                       </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-3 flex-wrap">
                   {isEditing ? (
                     <>
                       <GameButton variant="success" size="md" onClick={handleSaveProfile} icon={<Save className="w-5 h-5" />}>
@@ -249,6 +362,14 @@ function ProfilePageContent() {
                     <>
                       <GameButton variant="primary" size="md" onClick={() => setIsEditing(true)} icon={<Edit3 className="w-5 h-5" />}>
                         Edit Profile
+                      </GameButton>
+                      <GameButton
+                        variant="success"
+                        size="md"
+                        onClick={() => setShowBasketballForm(true)}
+                        icon={<UserPlus className="w-5 h-5" />}
+                      >
+                        Basketball Profile
                       </GameButton>
                       <GameButton variant="secondary" size="md" icon={<Settings className="w-5 h-5" />}>
                         Settings
@@ -268,14 +389,14 @@ function ProfilePageContent() {
             >
               <StatCard
                 title="Rating"
-                value={mockUser.rating}
+                value={safeUser.rating || 0}
                 icon={<Star className="w-6 h-6" />}
                 trend={{ direction: 'up', value: 23, label: 'this month' }}
                 glowColor="primary"
               />
               <StatCard
                 title="Skill Level"
-                value={`${mockUser.skillLevel}/10`}
+                value={`${safeUser.skillLevel || 0}/10`}
                 icon={<Target className="w-6 h-6" />}
                 glowColor="success"
               />
@@ -330,7 +451,14 @@ function ProfilePageContent() {
                             vs {game.opponent}
                           </p>
                           <p className="text-sm text-primary-300">
-                            {game.score} • {game.date.toLocaleDateString()}
+                            {game.score} • {(() => {
+                              try {
+                                return formatDate(game.date, 'Recent');
+                              } catch (error) {
+                                console.warn('Error formatting game date:', error);
+                                return 'Recent';
+                              }
+                            })()}
                           </p>
                         </div>
                       </div>
@@ -380,7 +508,14 @@ function ProfilePageContent() {
                         <h3 className="font-bold text-primary-100">{achievement.name}</h3>
                         <p className="text-sm text-primary-300">{achievement.description}</p>
                         <p className="text-xs text-primary-400 mt-1">
-                          Earned {achievement.earnedAt.toLocaleDateString()}
+                          Earned {(() => {
+                            try {
+                              return formatDate(achievement.earnedAt);
+                            } catch (error) {
+                              console.warn('Error formatting achievement date:', error);
+                              return 'Recently';
+                            }
+                          })()}
                         </p>
                       </div>
                     </motion.div>
@@ -393,12 +528,12 @@ function ProfilePageContent() {
       </div>
 
       {/* Mobile Navigation */}
-      <MobileBottomNav 
+      <MobileBottomNav
         notifications={{
           profile: 0
         }}
       />
-      
+
       {/* Mobile Quick Action Button */}
       <MobileQuickAction />
     </div>

@@ -59,6 +59,54 @@ export const userSchemas = {
       youtube: z.string().optional(),
     }).optional(),
   }),
+
+  basketballProfile: z.object({
+    // Personal Information
+    username: commonValidation.username,
+    firstName: z.string().min(1, 'First name is required').max(50, 'First name too long'),
+    lastName: z.string().min(1, 'Last name is required').max(50, 'Last name too long'),
+    dateOfBirth: z.string().refine((date) => {
+      const birthDate = new Date(date);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      return age >= 13 && age <= 100;
+    }, 'You must be between 13 and 100 years old'),
+    bio: z.string().max(500, 'Bio must be less than 500 characters').optional(),
+
+    // Basketball Details
+    position: z.enum(['PG', 'SG', 'SF', 'PF', 'C'], {
+      errorMap: () => ({ message: 'Please select a position' })
+    }),
+    skillLevel: z.number().min(1, 'Skill level must be at least 1').max(10, 'Skill level cannot exceed 10'),
+    yearsOfExperience: z.number().min(0, 'Years of experience cannot be negative').max(50, 'Years of experience seems too high'),
+    height: z.number().min(120, 'Height must be at least 120cm').max(250, 'Height cannot exceed 250cm').optional(),
+    weight: z.number().min(30, 'Weight must be at least 30kg').max(200, 'Weight cannot exceed 200kg').optional(),
+
+    // Playing Style
+    playingStyle: z.enum(['aggressive', 'defensive', 'playmaker', 'shooter', 'all-around'], {
+      errorMap: () => ({ message: 'Please select a playing style' })
+    }).optional(),
+    strengths: z.array(z.string()).max(5, 'Maximum 5 strengths allowed').optional(),
+    weaknesses: z.array(z.string()).max(3, 'Maximum 3 weaknesses allowed').optional(),
+
+    // Preferences
+    preferredGameTypes: z.array(z.enum(['pickup', 'tournament', 'scrimmage', 'practice'])).optional(),
+    availability: z.array(z.enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])).optional(),
+    preferredTimes: z.array(z.enum(['morning', 'afternoon', 'evening', 'night'])).optional(),
+
+    // Contact & Location
+    phone: commonValidation.phone,
+    city: z.string().min(1, 'City is required').max(100, 'City name too long'),
+    maxDistance: z.number().min(1, 'Max distance must be at least 1km').max(100, 'Max distance cannot exceed 100km'),
+
+    // Social Media
+    socialMedia: z.object({
+      instagram: z.string().optional(),
+      twitter: z.string().optional(),
+      youtube: z.string().optional(),
+      tiktok: z.string().optional(),
+    }).optional(),
+  }),
 };
 
 // Game-related schemas
@@ -184,6 +232,7 @@ export const schemas = {
 export type RegisterFormData = z.infer<typeof userSchemas.register>;
 export type LoginFormData = z.infer<typeof userSchemas.login>;
 export type ProfileFormData = z.infer<typeof userSchemas.profile>;
+export type BasketballProfileFormData = z.infer<typeof userSchemas.basketballProfile>;
 export type CreateGameFormData = z.infer<typeof gameSchemas.create>;
 export type CreateTeamFormData = z.infer<typeof teamSchemas.create>;
 export type CreateCourtFormData = z.infer<typeof courtSchemas.create>;

@@ -15,25 +15,25 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ['sports', 'social', 'lifestyle'],
     icons: [
       {
-        src: '/icon-192.png',
+        src: '/icon?size=192',
         sizes: '192x192',
         type: 'image/png',
         purpose: 'maskable'
       },
       {
-        src: '/icon-512.png',
+        src: '/icon?size=512',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable'
       },
       {
-        src: '/icon-192.png',
+        src: '/icon?size=192',
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any'
       },
       {
-        src: '/icon-512.png',
+        src: '/icon?size=512',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any'
@@ -45,21 +45,21 @@ export default function manifest(): MetadataRoute.Manifest {
         short_name: 'Games',
         description: 'Find basketball games near you',
         url: '/games',
-        icons: [{ src: '/icon-192.png', sizes: '192x192' }]
+        icons: [{ src: '/icon?size=192', sizes: '192x192' }]
       },
       {
         name: 'Find Courts',
         short_name: 'Courts',
         description: 'Discover basketball courts',
         url: '/courts',
-        icons: [{ src: '/icon-192.png', sizes: '192x192' }]
+        icons: [{ src: '/icon?size=192', sizes: '192x192' }]
       },
       {
         name: 'My Teams',
         short_name: 'Teams',
         description: 'Manage your basketball teams',
         url: '/teams',
-        icons: [{ src: '/icon-192.png', sizes: '192x192' }]
+        icons: [{ src: '/icon?size=192', sizes: '192x192' }]
       }
     ],
     screenshots: [

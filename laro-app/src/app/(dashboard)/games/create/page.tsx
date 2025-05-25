@@ -10,76 +10,7 @@ import { MobileBottomNav, MobileQuickAction } from '@/components/layout/mobile-n
 import { GameButton } from '@/components/ui/game-button';
 import { GameCreationForm } from '@/components/forms/game-form';
 import { GameForm, Court } from '@/types';
-
-const mockUser = {
-  username: 'CourtKing23',
-  avatar: '',
-  rating: 1847
-};
-
-// Mock courts data
-const mockCourts: Court[] = [
-  {
-    id: '1',
-    name: 'Venice Beach Basketball Courts',
-    address: '1800 Ocean Front Walk, Venice, CA 90291',
-    latitude: 33.9850,
-    longitude: -118.4695,
-    courtType: 'outdoor',
-    surfaceType: 'Asphalt',
-    hasLighting: true,
-    hasParking: true,
-    rating: 4.5,
-    reviewCount: 127,
-    isVerified: true,
-    createdAt: new Date('2024-01-15')
-  },
-  {
-    id: '2',
-    name: 'Downtown Athletic Club',
-    address: '123 S Figueroa St, Los Angeles, CA 90015',
-    latitude: 34.0522,
-    longitude: -118.2437,
-    courtType: 'indoor',
-    surfaceType: 'Hardwood',
-    hasLighting: true,
-    hasParking: true,
-    rating: 4.8,
-    reviewCount: 89,
-    isVerified: true,
-    createdAt: new Date('2024-02-01')
-  },
-  {
-    id: '3',
-    name: 'Griffith Park Courts',
-    address: '4730 Crystal Springs Dr, Los Angeles, CA 90027',
-    latitude: 34.1365,
-    longitude: -118.2940,
-    courtType: 'outdoor',
-    surfaceType: 'Concrete',
-    hasLighting: false,
-    hasParking: true,
-    rating: 4.2,
-    reviewCount: 156,
-    isVerified: false,
-    createdAt: new Date('2024-01-20')
-  },
-  {
-    id: '4',
-    name: 'UCLA Recreation Center',
-    address: '221 Westwood Plaza, Los Angeles, CA 90095',
-    latitude: 34.0689,
-    longitude: -118.4452,
-    courtType: 'indoor',
-    surfaceType: 'Hardwood',
-    hasLighting: true,
-    hasParking: true,
-    rating: 4.7,
-    reviewCount: 67,
-    isVerified: true,
-    createdAt: new Date('2024-02-05')
-  }
-];
+import { useCurrentUser, useCourts } from '@/lib/hooks/use-api';
 
 export default function CreateGamePage() {
   const router = useRouter();
@@ -87,6 +18,17 @@ export default function CreateGamePage() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Fetch data using API hooks
+  const { data: currentUserResponse } = useCurrentUser();
+  const user = currentUserResponse?.data || { username: 'Loading...', avatar: '', rating: 0 };
+
+  const { data: courtsResponse, isLoading: courtsLoading } = useCourts(
+    undefined, // no filters
+    1,
+    50 // get more courts for selection
+  );
+  const courts = courtsResponse?.data?.data || [];
 
   const handleSubmit = async (formData: GameForm) => {
     setIsLoading(true);
@@ -198,7 +140,7 @@ export default function CreateGamePage() {
         <div className="flex-1 min-w-0">
           {/* Header */}
           <AuthenticatedHeader
-            user={mockUser}
+            user={user}
             onMenuToggle={() => setMobileSidebarOpen(true)}
           />
 
@@ -277,10 +219,10 @@ export default function CreateGamePage() {
                 transition={{ duration: 0.6, delay: 0.3 }}
               >
                 <GameCreationForm
-                  courts={mockCourts}
+                  courts={courts}
                   onSubmit={handleSubmit}
                   onCancel={handleCancel}
-                  isLoading={isLoading}
+                  isLoading={isLoading || courtsLoading}
                 />
               </motion.div>
             </div>

@@ -22,14 +22,14 @@ export interface RefreshTokenResponse {
 export const authService = {
   // User registration
   async register(data: RegisterFormData): Promise<ApiResponse<AuthResponse>> {
-    return withRetry(() => 
+    return withRetry(() =>
       apiClient.post<AuthResponse>('/auth/register', data)
     );
   },
 
   // User login
   async login(data: LoginFormData): Promise<ApiResponse<AuthResponse>> {
-    return withRetry(() => 
+    return withRetry(() =>
       apiClient.post<AuthResponse>('/auth/login', data)
     );
   },
@@ -46,12 +46,22 @@ export const authService = {
 
   // Get current user profile
   async getCurrentUser(): Promise<ApiResponse<User>> {
-    return apiClient.get<User>('/auth/me');
+    try {
+      return await apiClient.get<User>('/auth/me');
+    } catch (error) {
+      console.error('getCurrentUser failed:', error);
+      // Return a mock response to prevent app crash
+      return {
+        success: false,
+        message: 'Failed to get current user',
+        data: null as any
+      };
+    }
   },
 
   // Update user profile
   async updateProfile(data: Partial<User>): Promise<ApiResponse<User>> {
-    return apiClient.patch<User>('/auth/profile', data);
+    return apiClient.put<User>('/users/profile', data);
   },
 
   // Change password

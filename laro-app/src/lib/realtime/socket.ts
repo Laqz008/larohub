@@ -64,7 +64,7 @@ class SocketService {
 
       this.isConnecting = true;
 
-      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
+      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3003';
 
       this.socket = io(socketUrl, {
         auth: {
@@ -158,19 +158,21 @@ class SocketService {
   // Handle reconnection logic
   private handleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached');
+      console.warn('🏀 LaroHub: Max reconnection attempts reached. Real-time features will be disabled.');
       return;
     }
 
     this.reconnectAttempts++;
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
 
-    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
+    console.log(`🏀 LaroHub: Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
 
     setTimeout(() => {
       const token = useAuthStore.getState().tokens?.accessToken;
       if (token) {
-        this.connect(token).catch(console.error);
+        this.connect(token).catch((error) => {
+          console.warn('🏀 LaroHub: Reconnection failed:', error.message);
+        });
       }
     }, delay);
   }
@@ -360,10 +362,21 @@ export const useSocket = () => {
   };
 };
 
-// Auto-connect when auth token is available
+// Auto-connect when auth token is available (only in browser and when enabled)
 if (typeof window !== 'undefined') {
-  const { tokens } = useAuthStore.getState();
-  if (tokens?.accessToken) {
-    socketService.connect(tokens.accessToken).catch(console.error);
+  // Only auto-connect in production or when explicitly enabled
+  const shouldAutoConnect = process.env.NODE_ENV === 'production' ||
+                           process.env.NEXT_PUBLIC_ENABLE_WEBSOCKET === 'true';
+
+  if (shouldAutoConnect) {
+    // Delay auto-connect to avoid SSR issues
+    setTimeout(() => {
+      const { tokens } = useAuthStore.getState();
+      if (tokens?.accessToken) {
+        socketService.connect(tokens.accessToken).catch((error) => {
+          console.warn('🏀 LaroHub: Auto-connect failed (this is expected in development):', error.message);
+        });
+      }
+    }, 100);
   }
 }

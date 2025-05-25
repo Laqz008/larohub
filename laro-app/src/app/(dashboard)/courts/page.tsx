@@ -28,117 +28,8 @@ import {
 import { useLazyLoadTracking } from '@/lib/performance/lazy-loading';
 import { usePreloadOnHover } from '@/lib/performance/client-lazy-loading';
 
-// Mock data for courts
-const mockUser = {
-  username: 'CourtKing23',
-  avatar: '',
-  rating: 1847
-};
-
-const mockCourts: Court[] = [
-  {
-    id: '1',
-    name: 'Venice Beach Basketball Courts',
-    address: '1800 Ocean Front Walk, Venice, CA 90291',
-    latitude: 33.9850,
-    longitude: -118.4695,
-    courtType: 'outdoor',
-    surfaceType: 'Asphalt',
-    hasLighting: true,
-    hasParking: true,
-    rating: 4.5,
-    reviewCount: 127,
-    isVerified: true,
-    createdAt: new Date('2024-01-15'),
-    photos: [
-      '/courts/venice-1.jpg',
-      '/courts/venice-2.jpg',
-      '/courts/venice-3.jpg'
-    ],
-    amenities: ['Restrooms', 'Water Fountain', 'Nearby Food', 'Beach Access']
-  },
-  {
-    id: '2',
-    name: 'Downtown Athletic Club',
-    address: '123 S Figueroa St, Los Angeles, CA 90015',
-    latitude: 34.0522,
-    longitude: -118.2437,
-    courtType: 'indoor',
-    surfaceType: 'Hardwood',
-    hasLighting: true,
-    hasParking: true,
-    rating: 4.8,
-    reviewCount: 89,
-    isVerified: true,
-    createdAt: new Date('2024-02-01'),
-    photos: [
-      '/courts/downtown-1.jpg',
-      '/courts/downtown-2.jpg'
-    ],
-    amenities: ['Locker Rooms', 'Showers', 'Pro Shop', 'Cafe', 'Air Conditioning']
-  },
-  {
-    id: '3',
-    name: 'Griffith Park Courts',
-    address: '4730 Crystal Springs Dr, Los Angeles, CA 90027',
-    latitude: 34.1365,
-    longitude: -118.2940,
-    courtType: 'outdoor',
-    surfaceType: 'Concrete',
-    hasLighting: false,
-    hasParking: true,
-    rating: 4.2,
-    reviewCount: 156,
-    isVerified: false,
-    createdAt: new Date('2024-01-20'),
-    photos: [
-      '/courts/griffith-1.jpg'
-    ],
-    amenities: ['Picnic Area', 'Hiking Trails', 'Observatory Nearby']
-  },
-  {
-    id: '4',
-    name: 'Santa Monica Pier Courts',
-    address: '200 Santa Monica Pier, Santa Monica, CA 90401',
-    latitude: 34.0089,
-    longitude: -118.4973,
-    courtType: 'outdoor',
-    surfaceType: 'Sport Court',
-    hasLighting: true,
-    hasParking: false,
-    rating: 4.0,
-    reviewCount: 203,
-    isVerified: true,
-    createdAt: new Date('2024-01-10'),
-    photos: [
-      '/courts/santa-monica-1.jpg',
-      '/courts/santa-monica-2.jpg',
-      '/courts/santa-monica-3.jpg',
-      '/courts/santa-monica-4.jpg'
-    ],
-    amenities: ['Ocean View', 'Amusement Park', 'Restaurants', 'Beach Access']
-  },
-  {
-    id: '5',
-    name: 'UCLA Recreation Center',
-    address: '221 Westwood Plaza, Los Angeles, CA 90095',
-    latitude: 34.0689,
-    longitude: -118.4452,
-    courtType: 'indoor',
-    surfaceType: 'Hardwood',
-    hasLighting: true,
-    hasParking: true,
-    rating: 4.7,
-    reviewCount: 67,
-    isVerified: true,
-    createdAt: new Date('2024-02-05'),
-    photos: [
-      '/courts/ucla-1.jpg',
-      '/courts/ucla-2.jpg'
-    ],
-    amenities: ['Student Discounts', 'Equipment Rental', 'Fitness Center', 'Pool']
-  }
-];
+// Import API hooks
+import { useCurrentUser, useCourts } from '@/lib/hooks/use-api';
 
 export default function CourtsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -155,6 +46,17 @@ export default function CourtsPage() {
     maxDistance: 25,
     minRating: 0
   });
+
+  // Fetch data using API hooks
+  const { data: currentUserResponse, isLoading: userLoading } = useCurrentUser();
+  const user = currentUserResponse?.data;
+
+  const { data: courtsResponse, isLoading: courtsLoading } = useCourts(
+    filters,
+    1,
+    50
+  );
+  const courts = courtsResponse?.data?.data || [];
 
   // Track lazy loading performance
   useLazyLoadTracking('CourtsPage');
@@ -185,7 +87,7 @@ export default function CourtsPage() {
   }, []);
 
   // Filter courts based on search and filters
-  const filteredCourts = mockCourts.filter(court => {
+  const filteredCourts = courts.filter((court: Court) => {
     // Search filter
     if (searchQuery && !court.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
         !court.address.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -274,7 +176,7 @@ export default function CourtsPage() {
         <div className="flex-1 min-w-0">
           {/* Header */}
           <AuthenticatedHeader
-            user={mockUser}
+            user={user || { username: 'Loading...', avatar: '', rating: 0 }}
             onMenuToggle={() => setMobileSidebarOpen(true)}
           />
 
@@ -414,7 +316,13 @@ export default function CourtsPage() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6 }}
             >
-              {viewMode === 'map' ? (
+              {courtsLoading ? (
+                <div className="space-y-6">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-48 bg-primary-400/20 rounded-lg animate-pulse"></div>
+                  ))}
+                </div>
+              ) : viewMode === 'map' ? (
                 <div className="space-y-6">
                   {/* Lazy Loaded Map */}
                   {mapLoaded ? (
@@ -501,7 +409,7 @@ export default function CourtsPage() {
             </motion.div>
 
             {/* Empty State */}
-            {filteredCourts.length === 0 && (
+            {!courtsLoading && filteredCourts.length === 0 && (
               <motion.div
                 className="text-center py-16"
                 initial={{ opacity: 0 }}

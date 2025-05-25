@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -169,8 +169,8 @@ model Court {
   rating      Float     @default(0)
   reviewCount Int       @default(0)
   isVerified  Boolean   @default(false)
-  amenities   String[]  @default([])
-  photos      String[]  @default([])
+  amenities   String?   // JSON string of amenities array
+  photos      String?   // JSON string of photos array
   hourlyRate  Float?    // Cost per hour for booking
   isBookable  Boolean   @default(true)
   createdAt   DateTime  @default(now())

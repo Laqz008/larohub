@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { useEffect } from 'react';
 
 // Performance monitoring and optimization utilities for lazy loading
@@ -86,7 +85,7 @@ class LazyLoadingPerformanceMonitor {
   // Get connection type for performance context
   private getConnectionType(): string {
     if (typeof window === 'undefined') return 'server';
-    
+
     if (typeof navigator !== 'undefined' && 'connection' in navigator) {
       const connection = (navigator as any).connection;
       return connection?.effectiveType || connection?.type || 'unknown';

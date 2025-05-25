@@ -1,40 +1,36 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { GameButton } from '@/components/ui/game-button';
 import { cn } from '@/lib/utils';
-import { useLogin } from '@/lib/hooks/use-api';
+import { useAuthStore } from '@/lib/stores/auth-store';
+import { useToast } from '@/components/ui/toast';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { isAuthenticated, isLoading, login } = useAuthStore();
+  const { toast } = useToast();
+
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const loginMutation = useLogin({
-    onSuccess: (data) => {
-      console.log('Login successful:', data);
-      // Store token in localStorage
-      if (data.data?.tokens?.accessToken) {
-        localStorage.setItem('auth-token', data.data.tokens.accessToken);
-      }
-      // Redirect to dashboard
-      router.push('/dashboard');
-    },
-    onError: (error: any) => {
-      console.error('Login failed:', error);
-      setErrors({
-        general: error.response?.data?.message || 'Login failed. Please try again.'
-      });
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      const returnUrl = searchParams.get('returnUrl') || '/dashboard';
+      router.push(returnUrl);
     }
-  });
+  }, [isAuthenticated, isLoading, router, searchParams]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -65,8 +61,22 @@ export default function LoginPage() {
       return;
     }
 
-    // Call the login API
-    loginMutation.mutate(formData);
+    setIsSubmitting(true);
+    try {
+      await login({ email: formData.email, password: formData.password });
+      toast({ title: 'Login successful!' });
+      // Redirect to return URL or dashboard
+      const returnUrl = searchParams.get('returnUrl') || '/dashboard';
+      router.push(returnUrl);
+    } catch (error: any) {
+      console.error('Login failed:', error);
+      setErrors({
+        general: error.message || 'Login failed. Please try again.'
+      });
+      toast({ title: error.message || 'Login failed', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -244,11 +254,11 @@ export default function LoginPage() {
               size="lg"
               fullWidth
               glow
-              loading={loginMutation.isPending}
+              loading={isSubmitting}
               icon={<ArrowRight className="w-5 h-5" />}
               iconPosition="right"
             >
-              {loginMutation.isPending ? 'Signing In...' : 'Sign In'}
+              {isSubmitting ? 'Signing In...' : 'Sign In'}
             </GameButton>
 
             {/* Divider */}

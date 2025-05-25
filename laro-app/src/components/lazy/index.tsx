@@ -1,69 +1,51 @@
 import React, { Suspense, lazy } from 'react';
-import { motion } from 'framer-motion';
-import { Loader2, MapPin, BarChart3, Users, Calendar, Trophy } from 'lucide-react';
-import type { CourtMapProps } from '@/components/maps/court-map';
-import type { PlayerStatsProps } from '@/components/stats/player-stats-dashboard';
 
-// Lazy load heavy components with proper client boundaries
-export const LazyCourtMap = lazy(() => 
-  import('@/components/maps/court-map').then(module => {
-    // Ensure the component is wrapped in a client boundary
-    const ClientCourtMap = (props: CourtMapProps) => {
-      'use client';
-      return <module.CourtMap {...props} />;
-    };
-    return { default: ClientCourtMap };
-  })
-);
-
-export const LazyPlayerStatsDashboard = lazy(() => 
-  import('@/components/stats/player-stats-dashboard').then(module => {
-    // Ensure the component is wrapped in a client boundary
-    const ClientPlayerStatsDashboard = (props: PlayerStatsProps) => {
-      'use client';
-      return <module.PlayerStatsDashboard {...props} />;
-    };
-    return { default: ClientPlayerStatsDashboard };
-  })
-);
-
-export const LazyGameChat = lazy(() => 
-  import('@/components/game/game-chat').then(module => {
-    const ClientGameChat = (props: any) => {
-      'use client';
-      return <module.GameChat {...props} />;
-    };
-    return { default: ClientGameChat };
-  })
-);
-
-export const LazyCourtBookingCalendar = lazy(() => 
-  import('@/components/courts/court-booking-calendar').then(module => ({ 
-    default: module.CourtBookingCalendar 
+// Lazy load heavy components
+export const LazyCourtMap = lazy(() =>
+  import('@/components/maps/court-map').then(module => ({
+    default: module.CourtMap
   }))
 );
 
-export const LazyGameForm = lazy(() => 
-  import('@/components/forms/game-form').then(module => ({ 
-    default: module.GameForm 
+export const LazyPlayerStatsDashboard = lazy(() =>
+  import('@/components/stats/player-stats-dashboard').then(module => ({
+    default: module.PlayerStatsDashboard
   }))
 );
 
-export const LazyTeamForm = lazy(() => 
-  import('@/components/forms/team-form').then(module => ({ 
-    default: module.TeamForm 
+export const LazyGameChat = lazy(() =>
+  import('@/components/game/game-chat').then(module => ({
+    default: module.GameChat
   }))
 );
 
-export const LazyGameCompletionForm = lazy(() => 
-  import('@/components/games/game-completion-form').then(module => ({ 
-    default: module.GameCompletionForm 
+export const LazyCourtBookingCalendar = lazy(() =>
+  import('@/components/courts/court-booking-calendar').then(module => ({
+    default: module.CourtBookingCalendar
   }))
 );
 
-export const LazyFeatureShowcase = lazy(() => 
-  import('@/components/features/feature-showcase').then(module => ({ 
-    default: module.FeatureShowcase 
+export const LazyGameForm = lazy(() =>
+  import('@/components/forms/game-form').then(module => ({
+    default: module.GameCreationForm
+  }))
+);
+
+export const LazyTeamForm = lazy(() =>
+  import('@/components/forms/team-form').then(module => ({
+    default: module.TeamCreationForm
+  }))
+);
+
+export const LazyGameCompletionForm = lazy(() =>
+  import('@/components/games/game-completion-form').then(module => ({
+    default: module.GameCompletionForm
+  }))
+);
+
+export const LazyFeatureShowcase = lazy(() =>
+  import('@/components/features/feature-showcase').then(module => ({
+    default: module.FeatureShowcase
   }))
 );
 

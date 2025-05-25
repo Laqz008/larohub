@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { AuthGuard } from '@/components/auth/auth-guard';
 
 export const metadata: Metadata = {
   title: 'Dashboard - LARO',
@@ -31,8 +32,10 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
-      {children}
-    </div>
+    <AuthGuard requireProfile={true}>
+      <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
+        {children}
+      </div>
+    </AuthGuard>
   );
 }

@@ -2,7 +2,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '@/types';
-import { authService, apiClient } from '@/lib/api';
+import { authService } from '@/lib/api';
+import type { LoginFormData, RegisterFormData } from '@/lib/validation';
 
 export interface AuthTokens {
   accessToken: string;
@@ -25,13 +26,10 @@ interface AuthState {
   setTokens: (tokens: AuthTokens) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  login: (email: string, password: string) => Promise<void>;
-  register: (userData: any) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshToken: () => Promise<void>;
-  updateProfile: (data: Partial<User>) => Promise<void>;
   clearAuth: () => void;
-  initializeAuth: () => Promise<void>;
+  login: (data: LoginFormData) => Promise<void>;
+  register: (data: RegisterFormData) => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -53,10 +51,7 @@ export const useAuthStore = create<AuthState>()(
         // Calculate expiry timestamp
         const expiresAt = Date.now() + (tokens.expiresIn * 1000);
         const tokensWithExpiry = { ...tokens, expiresAt };
-
         set({ tokens: tokensWithExpiry });
-        // Set the token in the API client
-        apiClient.setAuthToken(tokens.accessToken);
       },
 
       setLoading: (loading: boolean) => {
@@ -67,124 +62,6 @@ export const useAuthStore = create<AuthState>()(
         set({ error });
       },
 
-      login: async (email: string, password: string) => {
-        const { setUser, setTokens, setLoading, setError } = get();
-
-        try {
-          setLoading(true);
-          setError(null);
-
-          const response = await authService.login({ email, password });
-
-          if (response.success && response.data) {
-            setUser(response.data.user);
-            setTokens(response.data.tokens);
-          } else {
-            throw new Error(response.message || 'Login failed');
-          }
-        } catch (error: any) {
-          setError(error.message || 'Login failed');
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-
-      register: async (userData: any) => {
-        const { setUser, setTokens, setLoading, setError } = get();
-
-        try {
-          setLoading(true);
-          setError(null);
-
-          const response = await authService.register(userData);
-
-          if (response.success && response.data) {
-            setUser(response.data.user);
-            setTokens(response.data.tokens);
-          } else {
-            throw new Error(response.message || 'Registration failed');
-          }
-        } catch (error: any) {
-          setError(error.message || 'Registration failed');
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-
-      logout: async () => {
-        const { clearAuth, setLoading, setError } = get();
-
-        try {
-          setLoading(true);
-          setError(null);
-
-          await authService.logout();
-        } catch (error: any) {
-          console.error('Logout error:', error);
-          // Continue with local logout even if server logout fails
-        } finally {
-          clearAuth();
-          setLoading(false);
-        }
-      },
-
-      refreshToken: async () => {
-        const { tokens, setTokens, clearAuth, setError } = get();
-
-        if (!tokens?.refreshToken) {
-          clearAuth();
-          return;
-        }
-
-        try {
-          const response = await authService.refreshToken(tokens.refreshToken);
-
-          if (response.success && response.data) {
-            const newTokens = {
-              ...tokens,
-              accessToken: response.data.accessToken,
-              expiresIn: response.data.expiresIn,
-            };
-            setTokens(newTokens);
-          } else {
-            throw new Error('Token refresh failed');
-          }
-        } catch (error: any) {
-          console.error('Token refresh error:', error);
-          setError('Session expired. Please login again.');
-          clearAuth();
-          throw error;
-        }
-      },
-
-      updateProfile: async (data: Partial<User>) => {
-        const { user, setUser, setLoading, setError } = get();
-
-        if (!user) {
-          throw new Error('No user logged in');
-        }
-
-        try {
-          setLoading(true);
-          setError(null);
-
-          const response = await authService.updateProfile(data);
-
-          if (response.success && response.data) {
-            setUser(response.data);
-          } else {
-            throw new Error(response.message || 'Profile update failed');
-          }
-        } catch (error: any) {
-          setError(error.message || 'Profile update failed');
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-
       clearAuth: () => {
         set({
           user: null,
@@ -192,54 +69,86 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
           error: null,
         });
-        apiClient.clearAuthToken();
       },
 
-      initializeAuth: async () => {
-        const { tokens, refreshToken, clearAuth, setLoading } = get();
-
-        if (!tokens?.accessToken) {
-          return;
-        }
-
+      login: async (data: LoginFormData) => {
+        set({ isLoading: true, error: null });
         try {
-          setLoading(true);
-
-          // Set the token in the API client
-          apiClient.setAuthToken(tokens.accessToken);
-
-          // Check if token is expired
-          const now = Date.now();
-          const tokenExpiry = tokens.expiresAt || 0;
-
-          if (now >= tokenExpiry) {
-            // Token is expired, try to refresh
-            await refreshToken();
+          const response = await authService.login(data);
+          if (response.success && response.data) {
+            set({
+              user: response.data.user,
+              tokens: response.data.tokens,
+              isAuthenticated: true,
+              error: null,
+            });
           } else {
-            // Token is still valid, get current user
-            try {
-              const response = await authService.getCurrentUser();
-              if (response.success && response.data) {
-                set({ user: response.data, isAuthenticated: true });
-              } else {
-                clearAuth();
-              }
-            } catch (error) {
-              console.error('Failed to get current user:', error);
-              clearAuth();
-            }
+            throw new Error(response.message || 'Login failed');
           }
-        } catch (error) {
-          console.error('Auth initialization error:', error);
-          clearAuth();
+        } catch (error: any) {
+          set({ error: error.message || 'Login failed' });
+          throw error;
         } finally {
-          setLoading(false);
+          set({ isLoading: false });
+        }
+      },
+
+      register: async (data: RegisterFormData) => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await authService.register(data);
+          if (response.success && response.data) {
+            set({
+              user: response.data.user,
+              tokens: response.data.tokens,
+              isAuthenticated: true,
+              error: null,
+            });
+          } else {
+            throw new Error(response.message || 'Registration failed');
+          }
+        } catch (error: any) {
+          set({ error: error.message || 'Registration failed' });
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      updateProfile: async (data: Partial<User>) => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await authService.updateProfile(data);
+          if (response.success && response.data) {
+            set({
+              user: response.data,
+              error: null,
+            });
+          } else {
+            throw new Error(response.message || 'Profile update failed');
+          }
+        } catch (error: any) {
+          set({ error: error.message || 'Profile update failed' });
+          throw error;
+        } finally {
+          set({ isLoading: false });
         }
       },
     }),
     {
       name: 'laro-auth-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => {
+        // Safe localStorage access for SSR
+        if (typeof window !== 'undefined') {
+          return localStorage;
+        }
+        // Return a mock storage for SSR
+        return {
+          getItem: () => null,
+          setItem: () => {},
+          removeItem: () => {},
+        };
+      }),
       partialize: (state) => ({
         user: state.user,
         tokens: state.tokens,
@@ -249,38 +158,7 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-// Auto-refresh token before expiry
-let refreshTimer: NodeJS.Timeout | null = null;
+export type { LoginFormData, RegisterFormData };
 
-export const setupTokenRefresh = () => {
-  const { tokens, refreshToken } = useAuthStore.getState();
-
-  if (refreshTimer) {
-    clearTimeout(refreshTimer);
-  }
-
-  if (tokens?.expiresAt) {
-    const now = Date.now();
-    const expiryTime = tokens.expiresAt;
-    const refreshTime = expiryTime - now - 5 * 60 * 1000; // Refresh 5 minutes before expiry
-
-    if (refreshTime > 0) {
-      refreshTimer = setTimeout(() => {
-        refreshToken().catch(console.error);
-      }, refreshTime);
-    }
-  }
-};
-
-// Subscribe to token changes to setup auto-refresh
-useAuthStore.subscribe(
-  (state) => state.tokens,
-  (tokens) => {
-    if (tokens) {
-      setupTokenRefresh();
-    } else if (refreshTimer) {
-      clearTimeout(refreshTimer);
-      refreshTimer = null;
-    }
-  }
-);
+// Simplified auth store without complex async operations
+// Auth operations will be handled by individual components or hooks

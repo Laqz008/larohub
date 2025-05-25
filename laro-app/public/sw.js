@@ -6,7 +6,7 @@ const urlsToCache = [
   '/games',
   '/teams',
   '/courts',
-  '/manifest.json',
+  '/manifest.webmanifest',
 ];
 
 // Install event
@@ -34,20 +34,20 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   const options = {
     body: 'You have a new notification',
-    icon: '/icon-192x192.png',
-    badge: '/icon-72x72.png',
+    icon: '/icon?size=192',
+    badge: '/icon?size=72',
     tag: 'laro-notification',
     data: {},
     actions: [
       {
         action: 'view',
         title: 'View',
-        icon: '/icon-72x72.png'
+        icon: '/icon?size=72'
       },
       {
         action: 'dismiss',
         title: 'Dismiss',
-        icon: '/icon-72x72.png'
+        icon: '/icon?size=72'
       }
     ],
     requireInteraction: false,
@@ -59,19 +59,19 @@ self.addEventListener('push', (event) => {
       const data = event.data.json();
       options.body = data.message || options.body;
       options.data = data;
-      
+
       if (data.title) {
         options.title = data.title;
       }
-      
+
       if (data.icon) {
         options.icon = data.icon;
       }
-      
+
       if (data.tag) {
         options.tag = data.tag;
       }
-      
+
       if (data.requireInteraction) {
         options.requireInteraction = data.requireInteraction;
       }
@@ -95,7 +95,7 @@ self.addEventListener('notificationclick', (event) => {
 
   // Handle notification click
   const urlToOpen = event.notification.data?.url || '/dashboard';
-  
+
   event.waitUntil(
     clients.matchAll({
       type: 'window',
@@ -107,7 +107,7 @@ self.addEventListener('notificationclick', (event) => {
           return client.focus();
         }
       }
-      
+
       // If no window/tab is open, open a new one
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
@@ -138,10 +138,10 @@ async function syncData() {
   try {
     // Sync any pending data when back online
     console.log('Background sync triggered');
-    
+
     // You can implement specific sync logic here
     // For example, sync game scores, send pending messages, etc.
-    
+
   } catch (error) {
     console.error('Background sync failed:', error);
   }

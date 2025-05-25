@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useUserStats } from '@/lib/hooks/use-api';
 import { motion } from 'framer-motion';
 import {
   Trophy,
@@ -159,8 +160,15 @@ export function PlayerStatsDashboard({ userId, season = '2024', timeframe = 'all
   const [activeTimeframe, setActiveTimeframe] = useState(timeframe);
   const [activeView, setActiveView] = useState<'overview' | 'detailed' | 'games'>('overview');
 
-  // In real app, fetch data based on userId, season, and timeframe
-  const stats = mockStats;
+  // Fetch player stats using API hook
+  const { data: statsResponse, isLoading, error } = useUserStats(
+    userId,
+    season,
+    activeTimeframe
+  );
+
+  // Use stats from API or fallback to mock data if API fails
+  const stats = statsResponse?.data || mockStats;
 
   const getStatColor = (value: number, threshold: number) => {
     if (value >= threshold * 1.2) return 'text-court-400';
@@ -176,6 +184,27 @@ export function PlayerStatsDashboard({ userId, season = '2024', timeframe = 'all
   };
 
   const performance = getPerformanceGrade(stats.currentPeriodStats.winPercentage);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="space-y-8 animate-pulse">
+        <div className="flex items-center space-x-4">
+          <div className="w-16 h-16 bg-primary-400/20 rounded-full"></div>
+          <div className="space-y-2">
+            <div className="h-6 w-32 bg-primary-400/20 rounded"></div>
+            <div className="h-4 w-48 bg-primary-400/20 rounded"></div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-24 bg-primary-400/20 rounded-lg"></div>
+          ))}
+        </div>
+        <div className="h-64 bg-primary-400/20 rounded-lg"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

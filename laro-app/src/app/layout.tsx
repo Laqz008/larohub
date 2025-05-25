@@ -4,6 +4,7 @@ import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { QueryProvider } from "@/lib/providers/query-provider";
+import AuthProvider from "@/components/auth/auth-provider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -80,7 +81,9 @@ export default function RootLayout({
         <ErrorBoundary>
           <QueryProvider>
             <ToastProvider>
-              {children}
+              <AuthProvider>
+                {children}
+              </AuthProvider>
             </ToastProvider>
           </QueryProvider>
         </ErrorBoundary>

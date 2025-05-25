@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useEffect, useCallback, type ComponentType } from 'react';
-import { lazyLoadMonitor } from './lazy-loading';
+import { lazyLoadMonitor, useLazyLoadTracking } from './lazy-loading';
 
 // Basketball-specific performance thresholds
 export const BASKETBALL_PERFORMANCE_THRESHOLDS = {
@@ -79,4 +79,7 @@ export const usePreloadOnHover = (
     onMouseEnter: preload,
     onFocus: preload
   };
-}; 
+};
+
+// Re-export useLazyLoadTracking for convenience
+export { useLazyLoadTracking };
