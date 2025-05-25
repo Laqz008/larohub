@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { StatCard } from '@/components/ui/stat-card';
 import { GameButton } from '@/components/ui/game-button';
 
-interface PlayerStatsProps {
+export interface PlayerStatsProps {
   userId: string;
   season?: string;
   timeframe?: 'all' | 'last30' | 'last7';

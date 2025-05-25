@@ -1,7 +1,8 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { useState, useEffect, Suspense } from 'react';
+import * as React from 'react';
+import { motion } from 'framer-motion';
 import { Plus, MapPin, Calendar } from 'lucide-react';
 import { AuthenticatedHeader } from '@/components/layout/header';
 import { Sidebar, MobileSidebar } from '@/components/layout/sidebar';
@@ -15,6 +16,8 @@ import { useCurrentUser, useGames } from '@/lib/hooks/use-api';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useSocket } from '@/lib/realtime/socket';
 import { MockLogin } from '@/components/auth/mock-login';
+import { useToastHelpers } from '@/components/ui/toast';
+import { LazyComponentErrorBoundary } from '@/components/error/lazy-error-boundary';
 
 // Lazy load heavy components
 import {
@@ -24,13 +27,16 @@ import {
   CourtMapSkeleton,
   LazyWrapper
 } from '@/components/lazy';
-import { useLazyLoadTracking, usePreloadOnHover } from '@/lib/performance/lazy-loading';
+import { useLazyLoadTracking } from '@/lib/performance/lazy-loading';
+import { usePreloadOnHover } from '@/lib/performance/client-lazy-loading';
 
 function DashboardPageContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showPlayerStats, setShowPlayerStats] = useState(false);
   const [showCourtMap, setShowCourtMap] = useState(false);
+  const [socketError, setSocketError] = useState<string | null>(null);
+  const toast = useToastHelpers();
 
   // Track lazy loading performance
   useLazyLoadTracking('DashboardPage');
@@ -47,11 +53,11 @@ function DashboardPageContent() {
   );
 
   // Get current user data
-  const { data: currentUserResponse, isLoading: userLoading } = useCurrentUser();
+  const { data: currentUserResponse, isLoading: userLoading, error: userError } = useCurrentUser();
   const user = currentUserResponse?.data;
 
   // Get recent games (user's game history)
-  const { data: recentGamesResponse, isLoading: gamesLoading } = useGames(
+  const { data: recentGamesResponse, isLoading: gamesLoading, error: gamesError } = useGames(
     { status: 'completed' },
     1,
     5
@@ -59,7 +65,7 @@ function DashboardPageContent() {
   const recentGames = recentGamesResponse?.data?.data || [];
 
   // Get upcoming games
-  const { data: upcomingGamesResponse, isLoading: upcomingLoading } = useGames(
+  const { data: upcomingGamesResponse, isLoading: upcomingLoading, error: upcomingError } = useGames(
     { status: 'open' },
     1,
     5
@@ -70,6 +76,27 @@ function DashboardPageContent() {
   const { initializeAuth, isAuthenticated } = useAuthStore();
   const { connect: connectSocket, isConnected: socketConnected, isConnecting: socketConnecting, connectionError } = useSocket();
 
+  // Handle socket connection errors
+  useEffect(() => {
+    if (connectionError) {
+      setSocketError(connectionError);
+      toast.error('Real-time features temporarily unavailable', connectionError);
+    }
+  }, [connectionError, toast]);
+
+  // Handle API errors
+  useEffect(() => {
+    if (userError) {
+      toast.error('Failed to load user data', 'Please try refreshing the page.');
+    }
+    if (gamesError) {
+      toast.error('Failed to load games', 'Some game data may be unavailable.');
+    }
+    if (upcomingError) {
+      toast.error('Failed to load upcoming games', 'Some game data may be unavailable.');
+    }
+  }, [userError, gamesError, upcomingError, toast]);
+
   useEffect(() => {
     // Initialize authentication on component mount
     initializeAuth();
@@ -77,15 +104,17 @@ function DashboardPageContent() {
 
   useEffect(() => {
     // Connect to socket when user is authenticated
-    if (user) {
+    if (user && !socketConnected && !socketConnecting) {
       connectSocket().catch((error) => {
-        console.warn('🏀 LaroHub: Socket connection failed, continuing without real-time features:', error.message);
-        // Don't throw error - app should work without socket connection
+        const errorMessage = error instanceof Error ? error.message : 'Failed to connect to real-time server';
+        console.warn('🏀 LaroHub: Socket connection failed:', errorMessage);
+        setSocketError(errorMessage);
       });
     }
-  }, [user, connectSocket]);
+  }, [user, connectSocket, socketConnected, socketConnecting]);
 
   const isLoading = userLoading || gamesLoading || upcomingLoading;
+  const hasError = userError || gamesError || upcomingError;
 
   // Show login screen if not authenticated
   if (!isAuthenticated && !userLoading) {
@@ -263,9 +292,13 @@ function DashboardPageContent() {
                 </div>
 
                 {showPlayerStats ? (
-                  <LazyWrapper fallback={<PlayerStatsSkeleton />}>
-                    <LazyPlayerStatsDashboard userId={user?.id || 'demo'} />
-                  </LazyWrapper>
+                  <Suspense fallback={<PlayerStatsSkeleton />}>
+                    <LazyComponentErrorBoundary fallback={<PlayerStatsSkeleton />}>
+                      <LazyWrapper fallback={<PlayerStatsSkeleton />}>
+                        <LazyPlayerStatsDashboard userId={user?.id || 'demo'} />
+                      </LazyWrapper>
+                    </LazyComponentErrorBoundary>
+                  </Suspense>
                 ) : (
                   <div className="text-center py-8">
                     <div className="text-4xl mb-4">📊</div>
@@ -302,13 +335,17 @@ function DashboardPageContent() {
                 </div>
 
                 {showCourtMap ? (
-                  <LazyWrapper fallback={<CourtMapSkeleton />}>
-                    <LazyCourtMap
-                      courts={[]}
-                      userLocation={{ lat: 34.0522, lng: -118.2437 }}
-                      className="h-64"
-                    />
-                  </LazyWrapper>
+                  <Suspense fallback={<CourtMapSkeleton />}>
+                    <LazyComponentErrorBoundary fallback={<CourtMapSkeleton />}>
+                      <LazyWrapper fallback={<CourtMapSkeleton />}>
+                        <LazyCourtMap
+                          courts={[]}
+                          userLocation={{ lat: 34.0522, lng: -118.2437 }}
+                          className="h-64"
+                        />
+                      </LazyWrapper>
+                    </LazyComponentErrorBoundary>
+                  </Suspense>
                 ) : (
                   <div className="text-center py-8">
                     <div className="text-4xl mb-4">🗺️</div>
@@ -399,37 +436,39 @@ function DashboardPageContent() {
                 </div>
 
                 <div className="space-y-4">
-                  {upcomingGames.length > 0 ? upcomingGames.map((game, index) => (
-                    <motion.div
-                      key={game.id}
-                      className="p-4 bg-dark-200/50 rounded-lg border border-primary-400/10"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.8 + index * 0.1 }}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <p className="font-medium text-primary-100">
-                            vs {game.opponentTeam?.name || 'Open Game'}
-                          </p>
-                          <div className="flex items-center space-x-4 text-sm text-primary-300 mt-1">
-                            <span className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-1" />
-                              {new Date(game.scheduledTime).toLocaleDateString()} {new Date(game.scheduledTime).toLocaleTimeString()}
-                            </span>
+                  {upcomingGames.length > 0 ? (
+                    upcomingGames.map((game, index) => (
+                      <motion.div
+                        key={game.id}
+                        className="p-4 bg-dark-200/50 rounded-lg border border-primary-400/10"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.8 + index * 0.1 }}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className="font-medium text-primary-100">
+                              vs {game.opponentTeam?.name || 'Open Game'}
+                            </p>
+                            <div className="flex items-center space-x-4 text-sm text-primary-300 mt-1">
+                              <span className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-1" />
+                                {new Date(game.scheduledTime).toLocaleDateString()} {new Date(game.scheduledTime).toLocaleTimeString()}
+                              </span>
+                            </div>
                           </div>
+                          <JoinGameButton>Join</JoinGameButton>
                         </div>
-                        <JoinGameButton>Join</JoinGameButton>
-                      </div>
-                      <div className="flex items-center space-x-4 text-sm text-primary-300">
-                        <span className="flex items-center">
-                          <MapPin className="w-4 h-4 mr-1" />
-                          {game.court?.name || 'Court TBD'}
-                        </span>
-                        <span className="text-court-400">{game.gameType}</span>
-                      </div>
-                    </motion.div>
-                  )) : (
+                        <div className="flex items-center space-x-4 text-sm text-primary-300">
+                          <span className="flex items-center">
+                            <MapPin className="w-4 h-4 mr-1" />
+                            {game.court?.name || 'Court TBD'}
+                          </span>
+                          <span className="text-court-400">{game.gameType}</span>
+                        </div>
+                      </motion.div>
+                    ))
+                  ) : (
                     <div className="text-center py-8">
                       <div className="text-4xl mb-4">🏀</div>
                       <p className="text-primary-300 mb-4">No upcoming matches</p>

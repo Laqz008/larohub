@@ -1,6 +1,9 @@
-// Performance monitoring and optimization utilities for lazy loading
-import React from 'react';
+'use client';
 
+import React from 'react';
+import { useEffect } from 'react';
+
+// Performance monitoring and optimization utilities for lazy loading
 interface LazyLoadMetrics {
   componentName: string;
   loadTime: number;
@@ -17,6 +20,25 @@ interface PerformanceConfig {
   retryDelay: number;
   preloadThreshold: number; // Distance in pixels to start preloading
 }
+
+// Hook for tracking component load times
+export const useLazyLoadTracking = (componentName: string): void => {
+  useEffect(() => {
+    // Only track performance in browser environment
+    if (typeof window === 'undefined') return;
+
+    const startTime = performance.now();
+
+    return () => {
+      const endTime = performance.now();
+      try {
+        lazyLoadMonitor.trackLazyLoad(componentName, startTime, endTime);
+      } catch (error) {
+        console.warn(`Failed to track lazy load for ${componentName}:`, error);
+      }
+    };
+  }, [componentName]);
+};
 
 class LazyLoadingPerformanceMonitor {
   private metrics: LazyLoadMetrics[] = [];
@@ -36,7 +58,7 @@ class LazyLoadingPerformanceMonitor {
 
   // Track lazy loading performance
   trackLazyLoad(componentName: string, startTime: number, endTime?: number): void {
-    if (!this.config.enableTracking) return;
+    if (!this.config.enableTracking || typeof window === 'undefined') return;
 
     const loadTime = endTime ? endTime - startTime : performance.now() - startTime;
 
@@ -44,7 +66,7 @@ class LazyLoadingPerformanceMonitor {
       componentName,
       loadTime,
       timestamp: Date.now(),
-      userAgent: navigator.userAgent,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
       connectionType: this.getConnectionType()
     };
 
@@ -63,6 +85,8 @@ class LazyLoadingPerformanceMonitor {
 
   // Get connection type for performance context
   private getConnectionType(): string {
+    if (typeof window === 'undefined') return 'server';
+    
     if (typeof navigator !== 'undefined' && 'connection' in navigator) {
       const connection = (navigator as any).connection;
       return connection?.effectiveType || connection?.type || 'unknown';
@@ -70,26 +94,55 @@ class LazyLoadingPerformanceMonitor {
     return 'unknown';
   }
 
-  // Send metrics to analytics (placeholder for real implementation)
+  // Send metrics to analytics
   private sendAnalytics(metric: LazyLoadMetrics): void {
     // In a real app, you would send this to your analytics service
-    // Example: Google Analytics, Mixpanel, or custom analytics
-
-    if (typeof gtag !== 'undefined') {
-      gtag('event', 'lazy_load_performance', {
+    // For now, we'll just log it in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🏀 LaroHub Analytics:', {
+        event: 'lazy_load_performance',
         component_name: metric.componentName,
         load_time: metric.loadTime,
-        connection_type: metric.connectionType,
-        custom_parameter: 'larohub_performance'
+        connection_type: metric.connectionType
       });
     }
+  }
 
-    // Example: Custom analytics endpoint
-    // fetch('/api/analytics/lazy-loading', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(metric)
-    // });
+  // Preload components based on user behavior
+  preloadComponent(importFunction: () => Promise<any>, componentName: string): void {
+    if (typeof window === 'undefined' || this.preloadQueue.has(componentName)) return;
+
+    this.preloadQueue.add(componentName);
+
+    // Use requestIdleCallback for better performance
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(() => {
+        this.executePreload(importFunction, componentName);
+      });
+    } else {
+      // Fallback for browsers without requestIdleCallback
+      setTimeout(() => {
+        this.executePreload(importFunction, componentName);
+      }, 100);
+    }
+  }
+
+  private async executePreload(importFunction: () => Promise<any>, componentName: string): Promise<void> {
+    try {
+      const startTime = performance.now();
+      await importFunction();
+      const endTime = performance.now();
+
+      this.trackLazyLoad(`${componentName}_preload`, startTime, endTime);
+    } catch (error) {
+      console.warn(`Failed to preload ${componentName}:`, error);
+    }
+  }
+
+  // Clear metrics (useful for testing or memory management)
+  clearMetrics(): void {
+    this.metrics = [];
+    this.preloadQueue.clear();
   }
 
   // Get performance summary
@@ -141,128 +194,10 @@ class LazyLoadingPerformanceMonitor {
       componentBreakdown
     };
   }
-
-  // Preload components based on user behavior
-  preloadComponent(importFunction: () => Promise<any>, componentName: string): void {
-    if (this.preloadQueue.has(componentName)) return;
-
-    this.preloadQueue.add(componentName);
-
-    // Use requestIdleCallback for better performance
-    if (typeof requestIdleCallback !== 'undefined') {
-      requestIdleCallback(() => {
-        this.executePreload(importFunction, componentName);
-      });
-    } else {
-      // Fallback for browsers without requestIdleCallback
-      setTimeout(() => {
-        this.executePreload(importFunction, componentName);
-      }, 100);
-    }
-  }
-
-  private async executePreload(importFunction: () => Promise<any>, componentName: string): Promise<void> {
-    try {
-      const startTime = performance.now();
-      await importFunction();
-      const endTime = performance.now();
-
-      this.trackLazyLoad(`${componentName}_preload`, startTime, endTime);
-    } catch (error) {
-      console.warn(`Failed to preload ${componentName}:`, error);
-    }
-  }
-
-  // Clear metrics (useful for testing or memory management)
-  clearMetrics(): void {
-    this.metrics = [];
-    this.preloadQueue.clear();
-  }
 }
 
 // Create singleton instance
 export const lazyLoadMonitor = new LazyLoadingPerformanceMonitor();
-
-// Higher-order component for tracking lazy loading
-export function withLazyLoadTracking<T extends object>(
-  WrappedComponent: React.ComponentType<T>,
-  componentName: string
-): React.ComponentType<T> {
-  function TrackedComponent(props: T) {
-    React.useEffect(() => {
-      const startTime = performance.now();
-
-      return () => {
-        const endTime = performance.now();
-        lazyLoadMonitor.trackLazyLoad(componentName, startTime, endTime);
-      };
-    }, []);
-
-    return React.createElement(WrappedComponent, props);
-  }
-
-  // Set display name for debugging
-  TrackedComponent.displayName = `withLazyLoadTracking(${WrappedComponent.displayName || WrappedComponent.name || 'Component'})`;
-
-  return TrackedComponent;
-}
-
-// Hook for tracking component load times
-export function useLazyLoadTracking(componentName: string) {
-  React.useEffect(() => {
-    const startTime = performance.now();
-
-    return () => {
-      const endTime = performance.now();
-      lazyLoadMonitor.trackLazyLoad(componentName, startTime, endTime);
-    };
-  }, [componentName]);
-}
-
-// Utility for preloading on hover/focus
-export function usePreloadOnHover(
-  importFunction: () => Promise<any>,
-  componentName: string
-) {
-  const preload = React.useCallback(() => {
-    lazyLoadMonitor.preloadComponent(importFunction, componentName);
-  }, [importFunction, componentName]);
-
-  return {
-    onMouseEnter: preload,
-    onFocus: preload
-  };
-}
-
-// Basketball-specific performance thresholds
-export const BASKETBALL_PERFORMANCE_THRESHOLDS = {
-  COURT_MAP: 2000, // 2 seconds for court map loading
-  PLAYER_STATS: 1500, // 1.5 seconds for player stats
-  GAME_CHAT: 1000, // 1 second for game chat
-  FORMS: 800, // 800ms for forms
-  IMAGES: 500 // 500ms for images
-} as const;
-
-// Performance grade calculator
-export function getPerformanceGrade(loadTime: number, threshold: number): {
-  grade: 'A' | 'B' | 'C' | 'D' | 'F';
-  color: string;
-  message: string;
-} {
-  const ratio = loadTime / threshold;
-
-  if (ratio <= 0.5) {
-    return { grade: 'A', color: 'text-court-400', message: 'Excellent performance! 🏀' };
-  } else if (ratio <= 0.75) {
-    return { grade: 'B', color: 'text-primary-400', message: 'Good performance! 👍' };
-  } else if (ratio <= 1.0) {
-    return { grade: 'C', color: 'text-yellow-400', message: 'Average performance' };
-  } else if (ratio <= 1.5) {
-    return { grade: 'D', color: 'text-orange-400', message: 'Below average performance' };
-  } else {
-    return { grade: 'F', color: 'text-red-400', message: 'Poor performance - needs optimization' };
-  }
-}
 
 // Export types for external use
 export type { LazyLoadMetrics, PerformanceConfig };

@@ -17,7 +17,7 @@ import { GameButton } from '@/components/ui/game-button';
 import { CourtCard } from '@/components/game/court-card';
 import { Court, CourtFilters } from '@/types';
 
-interface CourtMapProps {
+export interface CourtMapProps {
   courts: Court[];
   userLocation?: { lat: number; lng: number };
   selectedCourt?: Court | null;

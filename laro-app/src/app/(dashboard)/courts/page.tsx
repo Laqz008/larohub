@@ -1,15 +1,12 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import {
   MapPin,
   Search,
-  Filter,
   List,
   Map as MapIcon,
-  Navigation,
-  Star,
   Plus,
   Crosshair
 } from 'lucide-react';
@@ -28,7 +25,8 @@ import {
   CourtMapSkeleton,
   LazyWrapper
 } from '@/components/lazy';
-import { useLazyLoadTracking, usePreloadOnHover } from '@/lib/performance/lazy-loading';
+import { useLazyLoadTracking } from '@/lib/performance/lazy-loading';
+import { usePreloadOnHover } from '@/lib/performance/client-lazy-loading';
 
 // Mock data for courts
 const mockUser = {
@@ -423,7 +421,7 @@ export default function CourtsPage() {
                     <LazyWrapper fallback={<CourtMapSkeleton />}>
                       <LazyCourtMap
                         courts={filteredCourts}
-                        userLocation={userLocation}
+                        userLocation={userLocation || undefined}
                         selectedCourt={selectedCourt}
                         onCourtSelect={handleCourtSelect}
                         onLocationChange={setUserLocation}
