@@ -63,7 +63,9 @@ export default {
       },
 
       fontFamily: {
-        'primary': ['Inter', 'system-ui', 'sans-serif'],
+        'sans': ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
+        'mono': ['var(--font-jetbrains-mono)', 'JetBrains Mono', 'monospace'],
+        'primary': ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
         'display': ['Orbitron', 'monospace'],
         'accent': ['Rajdhani', 'sans-serif']
       },

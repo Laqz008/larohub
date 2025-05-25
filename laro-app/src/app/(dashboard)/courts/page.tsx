@@ -1,12 +1,12 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
-import { 
-  MapPin, 
-  Search, 
-  Filter, 
-  List, 
+import { useState, useEffect, Suspense } from 'react';
+import {
+  MapPin,
+  Search,
+  Filter,
+  List,
   Map as MapIcon,
   Navigation,
   Star,
@@ -18,10 +18,17 @@ import { Sidebar, MobileSidebar } from '@/components/layout/sidebar';
 import { MobileBottomNav, MobileQuickAction } from '@/components/layout/mobile-nav';
 import { GameButton } from '@/components/ui/game-button';
 import { CourtCard } from '@/components/game/court-card';
-import { CourtMap } from '@/components/maps/court-map';
 import { cn } from '@/lib/utils';
 import { Court, CourtFilters } from '@/types';
 import { calculateDistance } from '@/lib/utils';
+
+// Lazy load heavy components
+import {
+  LazyCourtMap,
+  CourtMapSkeleton,
+  LazyWrapper
+} from '@/components/lazy';
+import { useLazyLoadTracking, usePreloadOnHover } from '@/lib/performance/lazy-loading';
 
 // Mock data for courts
 const mockUser = {
@@ -138,10 +145,11 @@ const mockCourts: Court[] = [
 export default function CourtsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('list'); // Start with list view for better performance
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCourt, setSelectedCourt] = useState<Court | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
   const [filters, setFilters] = useState<CourtFilters>({
     courtType: undefined,
     hasLighting: undefined,
@@ -149,6 +157,15 @@ export default function CourtsPage() {
     maxDistance: 25,
     minRating: 0
   });
+
+  // Track lazy loading performance
+  useLazyLoadTracking('CourtsPage');
+
+  // Preload map on hover for better UX
+  const mapPreload = usePreloadOnHover(
+    () => import('@/components/maps/court-map'),
+    'CourtMap'
+  );
 
   // Get user location on mount
   useEffect(() => {
@@ -241,24 +258,24 @@ export default function CourtsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
       {/* Mobile Sidebar */}
-      <MobileSidebar 
-        isOpen={mobileSidebarOpen} 
-        onClose={() => setMobileSidebarOpen(false)} 
+      <MobileSidebar
+        isOpen={mobileSidebarOpen}
+        onClose={() => setMobileSidebarOpen(false)}
       />
 
       <div className="flex">
         {/* Desktop Sidebar */}
         <div className="hidden lg:block">
-          <Sidebar 
-            isOpen={sidebarOpen} 
-            onToggle={() => setSidebarOpen(!sidebarOpen)} 
+          <Sidebar
+            isOpen={sidebarOpen}
+            onToggle={() => setSidebarOpen(!sidebarOpen)}
           />
         </div>
 
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <AuthenticatedHeader 
+          <AuthenticatedHeader
             user={mockUser}
             onMenuToggle={() => setMobileSidebarOpen(true)}
           />
@@ -317,13 +334,17 @@ export default function CourtsPage() {
                 {/* View Mode Toggle */}
                 <div className="flex items-center bg-dark-200/50 rounded-lg p-1">
                   <button
-                    onClick={() => setViewMode('map')}
+                    onClick={() => {
+                      setViewMode('map');
+                      setMapLoaded(true);
+                    }}
                     className={cn(
                       'flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all',
-                      viewMode === 'map' 
-                        ? 'bg-primary-500 text-white' 
+                      viewMode === 'map'
+                        ? 'bg-primary-500 text-white'
                         : 'text-primary-300 hover:text-primary-100'
                     )}
+                    {...mapPreload}
                   >
                     <MapIcon className="w-4 h-4" />
                     <span>Map</span>
@@ -332,8 +353,8 @@ export default function CourtsPage() {
                     onClick={() => setViewMode('list')}
                     className={cn(
                       'flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all',
-                      viewMode === 'list' 
-                        ? 'bg-primary-500 text-white' 
+                      viewMode === 'list'
+                        ? 'bg-primary-500 text-white'
                         : 'text-primary-300 hover:text-primary-100'
                     )}
                   >
@@ -377,7 +398,7 @@ export default function CourtsPage() {
                 {searchQuery && ` matching "${searchQuery}"`}
                 {userLocation && ' near you'}
               </p>
-              
+
               <div className="flex items-center space-x-2 text-sm text-primary-300">
                 <span>Sort by:</span>
                 <select className="bg-dark-200/50 border border-primary-400/30 rounded px-2 py-1 text-primary-100 focus:outline-none focus:ring-1 focus:ring-primary-500">
@@ -397,16 +418,48 @@ export default function CourtsPage() {
             >
               {viewMode === 'map' ? (
                 <div className="space-y-6">
-                  {/* Map */}
-                  <CourtMap
-                    courts={filteredCourts}
-                    userLocation={userLocation}
-                    selectedCourt={selectedCourt}
-                    onCourtSelect={handleCourtSelect}
-                    onLocationChange={setUserLocation}
-                    filters={filters}
-                    onFiltersChange={setFilters}
-                  />
+                  {/* Lazy Loaded Map */}
+                  {mapLoaded ? (
+                    <LazyWrapper fallback={<CourtMapSkeleton />}>
+                      <LazyCourtMap
+                        courts={filteredCourts}
+                        userLocation={userLocation}
+                        selectedCourt={selectedCourt}
+                        onCourtSelect={handleCourtSelect}
+                        onLocationChange={setUserLocation}
+                        filters={filters}
+                        onFiltersChange={setFilters}
+                      />
+                    </LazyWrapper>
+                  ) : (
+                    <div className="text-center py-16">
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <MapIcon className="w-16 h-16 text-primary-400 mx-auto mb-4" />
+                        <h3 className="text-xl font-display font-bold text-white mb-2">
+                          Map View
+                        </h3>
+                        <p className="text-primary-300 mb-6">
+                          Switch to map view to see courts on an interactive map
+                        </p>
+                        <GameButton
+                          variant="primary"
+                          size="lg"
+                          onClick={() => {
+                            setViewMode('map');
+                            setMapLoaded(true);
+                          }}
+                          {...mapPreload}
+                          icon={<MapIcon className="w-5 h-5" />}
+                        >
+                          Load Map
+                        </GameButton>
+                      </motion.div>
+                    </div>
+                  )}
 
                   {/* Selected Court Details */}
                   {selectedCourt && (
@@ -462,12 +515,12 @@ export default function CourtsPage() {
                   No courts found
                 </h3>
                 <p className="text-primary-300 mb-6">
-                  {searchQuery 
+                  {searchQuery
                     ? `No courts match your search for "${searchQuery}"`
                     : 'No courts match your current filters'
                   }
                 </p>
-                <GameButton 
+                <GameButton
                   variant="primary"
                   size="lg"
                   icon={<Plus className="w-5 h-5" />}
@@ -481,12 +534,12 @@ export default function CourtsPage() {
       </div>
 
       {/* Mobile Navigation */}
-      <MobileBottomNav 
+      <MobileBottomNav
         notifications={{
           courts: 2
         }}
       />
-      
+
       {/* Mobile Quick Action Button */}
       <MobileQuickAction />
     </div>

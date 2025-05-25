@@ -166,10 +166,11 @@ export function Header({ onMenuToggle, showMobileMenu = false, className }: Head
 }
 
 // Authenticated header variant
-export function AuthenticatedHeader({ user, onMenuToggle, className }: {
+export function AuthenticatedHeader({ user, onMenuToggle, className, socketConnected = false }: {
   user: { username: string; avatar?: string; rating: number };
   onMenuToggle?: () => void;
   className?: string;
+  socketConnected?: boolean;
 }) {
   const [notificationCount] = useState(5);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -210,6 +211,21 @@ export function AuthenticatedHeader({ user, onMenuToggle, className }: {
 
           {/* Right section - User info */}
           <div className="flex items-center space-x-4">
+            {/* Connection Status */}
+            <motion.div
+              className="flex items-center space-x-2 px-2 py-1 rounded-lg bg-dark-200/50"
+              title={socketConnected ? 'Real-time features active' : 'Real-time features unavailable'}
+              whileHover={{ scale: 1.05 }}
+            >
+              <div className={cn(
+                "w-2 h-2 rounded-full transition-colors",
+                socketConnected ? "bg-court-500 shadow-lg shadow-court-500/50" : "bg-gray-500"
+              )} />
+              <span className="text-xs text-primary-300 hidden sm:block">
+                {socketConnected ? 'Live' : 'Offline'}
+              </span>
+            </motion.div>
+
             {/* Notifications */}
             <motion.button
               className="relative p-2 rounded-lg text-primary-400 hover:text-primary-300 hover:bg-primary-400/10 transition-colors"

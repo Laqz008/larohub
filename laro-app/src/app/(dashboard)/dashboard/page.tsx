@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Plus, MapPin, Calendar } from 'lucide-react';
 import { AuthenticatedHeader } from '@/components/layout/header';
 import { Sidebar, MobileSidebar } from '@/components/layout/sidebar';
@@ -16,9 +16,35 @@ import { useAuthStore } from '@/lib/stores/auth-store';
 import { useSocket } from '@/lib/realtime/socket';
 import { MockLogin } from '@/components/auth/mock-login';
 
+// Lazy load heavy components
+import {
+  LazyPlayerStatsDashboard,
+  LazyCourtMap,
+  PlayerStatsSkeleton,
+  CourtMapSkeleton,
+  LazyWrapper
+} from '@/components/lazy';
+import { useLazyLoadTracking, usePreloadOnHover } from '@/lib/performance/lazy-loading';
+
 function DashboardPageContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [showPlayerStats, setShowPlayerStats] = useState(false);
+  const [showCourtMap, setShowCourtMap] = useState(false);
+
+  // Track lazy loading performance
+  useLazyLoadTracking('DashboardPage');
+
+  // Preload handlers for better UX
+  const playerStatsPreload = usePreloadOnHover(
+    () => import('@/components/stats/player-stats-dashboard'),
+    'PlayerStatsDashboard'
+  );
+
+  const courtMapPreload = usePreloadOnHover(
+    () => import('@/components/maps/court-map'),
+    'CourtMap'
+  );
 
   // Get current user data
   const { data: currentUserResponse, isLoading: userLoading } = useCurrentUser();
@@ -42,7 +68,7 @@ function DashboardPageContent() {
 
   // Initialize auth and socket connection
   const { initializeAuth, isAuthenticated } = useAuthStore();
-  const { connect: connectSocket } = useSocket();
+  const { connect: connectSocket, isConnected: socketConnected, isConnecting: socketConnecting, connectionError } = useSocket();
 
   useEffect(() => {
     // Initialize authentication on component mount
@@ -52,7 +78,10 @@ function DashboardPageContent() {
   useEffect(() => {
     // Connect to socket when user is authenticated
     if (user) {
-      connectSocket().catch(console.error);
+      connectSocket().catch((error) => {
+        console.warn('🏀 LaroHub: Socket connection failed, continuing without real-time features:', error.message);
+        // Don't throw error - app should work without socket connection
+      });
     }
   }, [user, connectSocket]);
 
@@ -72,18 +101,13 @@ function DashboardPageContent() {
             <Sidebar
               isOpen={sidebarOpen}
               onToggle={() => setSidebarOpen(!sidebarOpen)}
-              notifications={{
-                games: { count: 2, type: 'info', label: 'New game invitations' },
-                teams: { count: 1, type: 'warning', label: 'Team roster update needed' },
-                achievements: { count: 3, type: 'success', label: 'New achievements unlocked!' },
-                profile: { count: 1, type: 'urgent', label: 'Profile verification required' }
-              }}
             />
           </div>
           <div className="flex-1 min-w-0">
             <AuthenticatedHeader
               user={user || { username: 'Loading...', avatar: '', rating: 0 }}
               onMenuToggle={() => setMobileSidebarOpen(true)}
+              socketConnected={socketConnected}
             />
             <DashboardSkeleton />
           </div>
@@ -107,12 +131,6 @@ function DashboardPageContent() {
           <Sidebar
             isOpen={sidebarOpen}
             onToggle={() => setSidebarOpen(!sidebarOpen)}
-            notifications={{
-              games: { count: 2, type: 'info', label: 'New game invitations' },
-              teams: { count: 1, type: 'warning', label: 'Team roster update needed' },
-              achievements: { count: 3, type: 'success', label: 'New achievements unlocked!' },
-              profile: { count: 1, type: 'urgent', label: 'Profile verification required' }
-            }}
           />
         </div>
 
@@ -122,6 +140,7 @@ function DashboardPageContent() {
           <AuthenticatedHeader
             user={user || { username: 'Loading...', avatar: '', rating: 0 }}
             onMenuToggle={() => setMobileSidebarOpen(true)}
+            socketConnected={socketConnected}
           />
 
           {/* Dashboard Content */}
@@ -222,6 +241,91 @@ function DashboardPageContent() {
               />
             </motion.div>
 
+            {/* Lazy Loading Sections */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+              {/* Player Stats Section */}
+              <motion.div
+                className="bg-gradient-to-br from-dark-300/80 to-dark-400/80 backdrop-blur-sm rounded-xl p-6 border border-primary-400/20"
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-display font-bold text-white">Player Analytics</h2>
+                  <GameButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPlayerStats(!showPlayerStats)}
+                    {...playerStatsPreload}
+                  >
+                    {showPlayerStats ? 'Hide Stats' : 'View Stats'}
+                  </GameButton>
+                </div>
+
+                {showPlayerStats ? (
+                  <LazyWrapper fallback={<PlayerStatsSkeleton />}>
+                    <LazyPlayerStatsDashboard userId={user?.id || 'demo'} />
+                  </LazyWrapper>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-4xl mb-4">📊</div>
+                    <p className="text-primary-300 mb-4">View your detailed basketball statistics</p>
+                    <GameButton
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setShowPlayerStats(true)}
+                      {...playerStatsPreload}
+                    >
+                      Load Analytics
+                    </GameButton>
+                  </div>
+                )}
+              </motion.div>
+
+              {/* Court Map Section */}
+              <motion.div
+                className="bg-gradient-to-br from-dark-300/80 to-dark-400/80 backdrop-blur-sm rounded-xl p-6 border border-primary-400/20"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-display font-bold text-white">Nearby Courts</h2>
+                  <GameButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowCourtMap(!showCourtMap)}
+                    {...courtMapPreload}
+                  >
+                    {showCourtMap ? 'Hide Map' : 'View Map'}
+                  </GameButton>
+                </div>
+
+                {showCourtMap ? (
+                  <LazyWrapper fallback={<CourtMapSkeleton />}>
+                    <LazyCourtMap
+                      courts={[]}
+                      userLocation={{ lat: 34.0522, lng: -118.2437 }}
+                      className="h-64"
+                    />
+                  </LazyWrapper>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-4xl mb-4">🗺️</div>
+                    <p className="text-primary-300 mb-4">Find basketball courts near you</p>
+                    <GameButton
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setShowCourtMap(true)}
+                      {...courtMapPreload}
+                    >
+                      Load Map
+                    </GameButton>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+
             {/* Recent Games & Upcoming Matches */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Recent Games */}
@@ -229,7 +333,7 @@ function DashboardPageContent() {
                 className="bg-gradient-to-br from-dark-300/80 to-dark-400/80 backdrop-blur-sm rounded-xl p-6 border border-primary-400/20"
                 initial={{ opacity: 0, x: -30 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.6 }}
+                transition={{ duration: 0.6, delay: 0.8 }}
               >
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-display font-bold text-white">Recent Games</h2>
@@ -284,7 +388,7 @@ function DashboardPageContent() {
                 className="bg-gradient-to-br from-dark-300/80 to-dark-400/80 backdrop-blur-sm rounded-xl p-6 border border-primary-400/20"
                 initial={{ opacity: 0, x: 30 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.6 }}
+                transition={{ duration: 0.6, delay: 0.8 }}
               >
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-display font-bold text-white">Upcoming Matches</h2>

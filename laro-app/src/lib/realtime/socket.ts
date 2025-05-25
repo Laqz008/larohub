@@ -1,4 +1,5 @@
 // Real-time WebSocket service using Socket.IO
+import React from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useGameStore } from '@/lib/stores/game-store';
@@ -12,27 +13,27 @@ export interface SocketEvents {
   'game:started': (data: { gameId: string; startTime: Date }) => void;
   'game:ended': (data: { gameId: string; result: any }) => void;
   'game:cancelled': (data: { gameId: string; reason: string }) => void;
-  
+
   // Live game events
   'live:score_update': (data: { gameId: string; hostScore: number; opponentScore: number }) => void;
   'live:quarter_change': (data: { gameId: string; quarter: number }) => void;
   'live:timeout': (data: { gameId: string; team: string; timeoutsLeft: number }) => void;
   'live:foul': (data: { gameId: string; playerId: string; foulType: string }) => void;
-  
+
   // Team events
   'team:updated': (team: any) => void;
   'team:member_joined': (data: { teamId: string; userId: string; role: string }) => void;
   'team:member_left': (data: { teamId: string; userId: string }) => void;
   'team:invitation': (invitation: any) => void;
-  
+
   // Chat events
   'chat:message': (message: any) => void;
   'chat:typing': (data: { userId: string; isTyping: boolean }) => void;
-  
+
   // Notification events
   'notification:new': (notification: any) => void;
   'notification:read': (data: { notificationId: string }) => void;
-  
+
   // User events
   'user:online': (data: { userId: string; status: 'online' | 'offline' }) => void;
   'user:location_update': (data: { userId: string; latitude: number; longitude: number }) => void;
@@ -63,8 +64,8 @@ class SocketService {
 
       this.isConnecting = true;
 
-      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
-      
+      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
+
       this.socket = io(socketUrl, {
         auth: {
           token: token || useAuthStore.getState().tokens?.accessToken,
@@ -92,7 +93,7 @@ class SocketService {
       this.socket.on('disconnect', (reason) => {
         console.log('Socket disconnected:', reason);
         this.isConnecting = false;
-        
+
         if (reason === 'io server disconnect') {
           // Server disconnected, try to reconnect
           this.handleReconnect();
@@ -209,11 +210,11 @@ class SocketService {
     });
 
     this.socket.on('game:started', (data) => {
-      useGameStore.getState().updateGame(data.gameId, { 
+      useGameStore.getState().updateGame(data.gameId, {
         status: 'in_progress',
         scheduledTime: data.startTime,
       });
-      
+
       showBrowserNotification('Game Started', {
         body: 'Your game has started!',
         tag: `game-${data.gameId}`,
@@ -237,7 +238,7 @@ class SocketService {
     // Notification events
     this.socket.on('notification:new', (notification) => {
       useNotificationStore.getState().addNotification(notification);
-      
+
       // Show browser notification if enabled
       const preferences = useNotificationStore.getState().preferences;
       if (preferences.push[notification.type as keyof typeof preferences.push]) {
@@ -273,13 +274,84 @@ export const socketService = new SocketService();
 
 // React hook for socket connection status
 export const useSocket = () => {
-  const isConnected = socketService.isConnected();
-  
+  const [isConnected, setIsConnected] = React.useState(socketService.isConnected());
+  const [connectionError, setConnectionError] = React.useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = React.useState(false);
+
+  React.useEffect(() => {
+    // Update connection status when socket state changes
+    const checkConnection = () => {
+      setIsConnected(socketService.isConnected());
+    };
+
+    // Set up interval to check connection status
+    const interval = setInterval(checkConnection, 1000);
+
+    // Listen for socket events if socket exists
+    if (socketService.socket) {
+      const socket = socketService.socket;
+
+      const handleConnect = () => {
+        setIsConnected(true);
+        setConnectionError(null);
+        setIsConnecting(false);
+        console.log('🏀 LaroHub: Socket connected successfully');
+      };
+
+      const handleDisconnect = () => {
+        setIsConnected(false);
+        setIsConnecting(false);
+        console.log('🏀 LaroHub: Socket disconnected');
+      };
+
+      const handleConnectError = (error: any) => {
+        setIsConnected(false);
+        setIsConnecting(false);
+        setConnectionError(error.message || 'Connection failed');
+        console.error('🏀 LaroHub: Socket connection error:', error);
+      };
+
+      socket.on('connect', handleConnect);
+      socket.on('disconnect', handleDisconnect);
+      socket.on('connect_error', handleConnectError);
+
+      return () => {
+        socket.off('connect', handleConnect);
+        socket.off('disconnect', handleDisconnect);
+        socket.off('connect_error', handleConnectError);
+        clearInterval(interval);
+      };
+    }
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const connect = React.useCallback(async (token?: string) => {
+    try {
+      setIsConnecting(true);
+      setConnectionError(null);
+      await socketService.connect(token);
+    } catch (error) {
+      setConnectionError((error as Error).message);
+      setIsConnecting(false);
+      throw error;
+    }
+  }, []);
+
+  const disconnect = React.useCallback(() => {
+    socketService.disconnect();
+    setIsConnected(false);
+    setIsConnecting(false);
+    setConnectionError(null);
+  }, []);
+
   return {
     socket: socketService,
     isConnected,
-    connect: socketService.connect.bind(socketService),
-    disconnect: socketService.disconnect.bind(socketService),
+    isConnecting,
+    connectionError,
+    connect,
+    disconnect,
     emit: socketService.emit.bind(socketService),
     joinGameRoom: socketService.joinGameRoom.bind(socketService),
     leaveGameRoom: socketService.leaveGameRoom.bind(socketService),
