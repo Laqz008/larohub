@@ -226,48 +226,44 @@ export function NotificationCenter({ isOpen, onClose, className }: NotificationC
             </div>
 
             {/* Filter Tabs */}
-            <div className="p-3 bg-dark-200 border-b border-primary-400">
-              <div className="grid grid-cols-2 gap-2 sm:flex sm:space-x-2">
-                {[
-                  { id: 'all', label: 'All', count: notifications.length, emoji: '📋' },
-                  { id: 'unread', label: 'Unread', count: unreadCount, emoji: '🔔' },
-                  { id: 'games', label: 'Games', count: notifications.filter(n => ['game_reminder', 'game_update', 'game_starting', 'game_cancelled', 'player_joined', 'player_left'].includes(n.type)).length, emoji: '🏀' },
-                  { id: 'messages', label: 'Messages', count: notifications.filter(n => n.type === 'message').length, emoji: '💬' }
-                ].map((tab) => (
-                  <motion.button
-                    key={tab.id}
-                    onClick={() => setFilter(tab.id as any)}
-                    className={cn(
-                      'flex items-center justify-center space-x-1.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 min-w-0',
-                      'sm:flex-1 sm:text-sm sm:px-4 sm:py-3 sm:rounded-xl',
-                      filter === tab.id
-                        ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg'
-                        : 'text-white hover:text-white hover:bg-primary-600 border border-primary-400'
-                    )}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <span className="text-sm sm:text-base flex-shrink-0">{tab.emoji}</span>
-                    <span className="font-semibold truncate">{tab.label}</span>
-                    {tab.count > 0 && (
-                      <motion.span
-                        className={cn(
-                          'px-1.5 py-0.5 rounded-full text-xs font-bold min-w-[18px] text-center flex-shrink-0',
-                          'sm:px-2 sm:py-1 sm:min-w-[20px]',
-                          filter === tab.id
-                            ? 'bg-white text-dark-400'
-                            : 'bg-primary-500 text-white'
-                        )}
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                      >
-                        {tab.count > 99 ? '99+' : tab.count}
-                      </motion.span>
-                    )}
-                  </motion.button>
-                ))}
-              </div>
+            <div className="flex space-x-1 p-3 bg-dark-200 border-b border-primary-400">
+              {[
+                { id: 'all', label: 'All', count: notifications.length, emoji: '📋' },
+                { id: 'unread', label: 'Unread', count: unreadCount, emoji: '🔔' },
+                { id: 'games', label: 'Games', count: notifications.filter(n => ['game_reminder', 'game_update', 'game_starting', 'game_cancelled', 'player_joined', 'player_left'].includes(n.type)).length, emoji: '🏀' },
+                { id: 'messages', label: 'Messages', count: notifications.filter(n => n.type === 'message').length, emoji: '💬' }
+              ].map((tab) => (
+                <motion.button
+                  key={tab.id}
+                  onClick={() => setFilter(tab.id as any)}
+                  className={cn(
+                    'flex items-center justify-center space-x-1 px-2 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex-1 min-w-0',
+                    filter === tab.id
+                      ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg'
+                      : 'text-white hover:text-white hover:bg-primary-600 border border-primary-400'
+                  )}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <span className="text-sm flex-shrink-0">{tab.emoji}</span>
+                  <span className="font-semibold truncate text-xs">{tab.label}</span>
+                  {tab.count > 0 && (
+                    <motion.span
+                      className={cn(
+                        'px-1 py-0.5 rounded-full text-xs font-bold min-w-[16px] text-center flex-shrink-0',
+                        filter === tab.id
+                          ? 'bg-white text-dark-400'
+                          : 'bg-primary-500 text-white'
+                      )}
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    >
+                      {tab.count > 99 ? '99+' : tab.count}
+                    </motion.span>
+                  )}
+                </motion.button>
+              ))}
             </div>
 
             {/* Notifications List */}
